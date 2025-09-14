@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TailAdmin Sidebar CSS Classes */
+.sidebar {
+  @apply fixed left-0 top-0 z-50 flex h-screen w-[290px] flex-col overflow-y-hidden border-r border-gray-200 bg-white px-5 duration-300 ease-linear;
+}
+
+.sidebar-header {
+  @apply flex items-center gap-2 pb-7 pt-8;
+}
+
+.logo {
+  @apply block;
+}
+
+.logo-icon {
+  @apply hidden;
+}
+
+.menu-group-title {
+  @apply block;
+}
+
+.menu-group-icon {
+  @apply hidden mx-auto fill-current w-6 h-6;
+}
+
+.menu-item {
+  @apply relative flex items-center gap-2.5 rounded-sm px-4 py-2 font-medium duration-300 ease-in-out;
+}
+
+.menu-item-active {
+  @apply bg-gray-100 text-gray-900;
+}
+
+.menu-item-inactive {
+  @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900;
+}
+
+.menu-item-icon-active {
+  @apply fill-current text-blue-600;
+}
+
+.menu-item-icon-inactive {
+  @apply fill-current text-gray-500 group-hover:text-gray-900;
+}
+
+.menu-item-text {
+  @apply block;
+}
+
+.menu-item-arrow {
+  @apply absolute right-2.5 top-1/2 -translate-y-1/2 stroke-current transform duration-300;
+}
+
+.menu-item-arrow-active {
+  @apply rotate-180 stroke-blue-600;
+}
+
+.menu-item-arrow-inactive {
+  @apply stroke-gray-500 group-hover:stroke-gray-900;
+}
+
+.menu-dropdown {
+  @apply mt-2 flex flex-col gap-1 pl-9;
+}
+
+.menu-dropdown-item {
+  @apply relative flex items-center gap-2.5 rounded-sm px-4 py-2 font-medium duration-300 ease-in-out;
+}
+
+.menu-dropdown-item-active {
+  @apply bg-blue-50 text-blue-600;
+}
+
+.menu-dropdown-item-inactive {
+  @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900;
+}
+
+.menu-dropdown-badge {
+  @apply rounded px-2 py-0.5 text-xs font-medium;
+}
+
+.menu-dropdown-badge-active {
+  @apply bg-blue-100 text-blue-600;
+}
+
+.menu-dropdown-badge-inactive {
+  @apply bg-gray-100 text-gray-600;
+}
+
+/* Collapsed Sidebar Styles */
+.sidebar.lg\\:w-\\[90px\\] {
+  @apply lg:w-[90px];
+}
+
+.sidebar.lg\\:w-\\[90px\\] .logo {
+  @apply lg:hidden;
+}
+
+.sidebar.lg\\:w-\\[90px\\] .logo-icon {
+  @apply lg:block;
+}
+
+.sidebar.lg\\:w-\\[90px\\] .menu-group-title {
+  @apply lg:hidden;
+}
+
+.sidebar.lg\\:w-\\[90px\\] .menu-group-icon {
+  @apply lg:block;
+}
+
+.sidebar.lg\\:w-\\[90px\\] .menu-item-text {
+  @apply lg:hidden;
+}
+
+.sidebar.lg\\:w-\\[90px\\] .menu-item-arrow {
+  @apply lg:hidden;
+}
+
+.sidebar.lg\\:w-\\[90px\\] .menu-dropdown {
+  @apply lg:hidden;
+}
+
+/* Dark mode styles */
+.dark .sidebar {
+  @apply border-gray-800 bg-black;
+}
+
+.dark .menu-item-active {
+  @apply bg-gray-800 text-white;
+}
+
+.dark .menu-item-inactive {
+  @apply text-gray-400 hover:bg-gray-800 hover:text-white;
+}
+
+/* Custom z-index */
+.z-9999 {
+  z-index: 9999;
+}
