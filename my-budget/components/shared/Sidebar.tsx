@@ -17,23 +17,21 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Menu */}
-      <p className="text-xs text-gray-400 mb-2 uppercase">Menu</p>
+      <p className="text-xs text-gray-400 mb-2 uppercase">จัดทำแผนงบประมาณ</p>
       <ul className="space-y-2">
         <li>
           <Link href="#" className="flex items-center px-3 py-2 rounded bg-indigo-50 text-indigo-600 font-medium">
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6" />
-            </svg>
-            Dashboard
+            <img src="./img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
+            บันทึกจำนวนนักศึกษา
           </Link>
         </li>
 
         <li>
           <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2v-5H3v5a2 2 0 002 2z" />
+              <img src="./img/icon/add-people.svg" alt="" className="w-5 h-5 mr-3" />
             </svg>
-            Calendar
+            จัดทำแผนรายรับ
           </Link>
         </li>
 
@@ -42,7 +40,15 @@ const Sidebar: React.FC = () => {
             <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A4 4 0 017 16h10a4 4 0 011.879.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            User Profile
+            จัดทำแผนรายจ่าย
+          </Link>
+        </li>
+        <li>
+          <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A4 4 0 017 16h10a4 4 0 011.879.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            จัดทำแผนงบประมาณ
           </Link>
         </li>
 
