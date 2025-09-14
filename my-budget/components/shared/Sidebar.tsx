@@ -20,8 +20,8 @@ const Sidebar: React.FC = () => {
       <p className="text-xs text-gray-400 mb-2 uppercase">จัดทำแผนงบประมาณ</p>
       <ul className="space-y-2">
         <li>
-          <Link href="#" className="flex items-center px-3 py-2 rounded bg-indigo-50 text-indigo-600 font-medium">
-            <img src="./img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
+          <Link href="/planning/students" className="flex items-center px-3 py-2 rounded bg-indigo-50 text-indigo-600 font-medium">
+            <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
             บันทึกจำนวนนักศึกษา
           </Link>
         </li>
@@ -29,7 +29,7 @@ const Sidebar: React.FC = () => {
         <li>
           <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <img src="./img/icon/add-people.svg" alt="" className="w-5 h-5 mr-3" />
+              <img src="/img/icon/add-people.svg" alt="" className="w-5 h-5 mr-3" />
             </svg>
             จัดทำแผนรายรับ
           </Link>
