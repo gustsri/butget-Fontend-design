@@ -4,8 +4,7 @@ import Link from "next/link";
 
 const Sidebar: React.FC = () => {
   return (
-    <aside className="w-64 h-screen bg-white shadow-md flex flex-col p-4 fixed left-0 top-0 z-10">
-
+    <aside className="w-64 h-screen bg-white shadow-md flex flex-col p-4 fixed left-0 top-0 z-20">
       {/* Logo */}
       <div className="flex items-center mb-6">
         <div className="w-8 h-8 bg-indigo-500 rounded flex items-center justify-center mr-2">
@@ -17,138 +16,156 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Menu */}
-      <p className="text-xs text-gray-400 mb-2 uppercase">จัดทำแผนงบประมาณ</p>
-      <ul className="space-y-2">
-        <li>
-          <Link href="/planning/students" className="flex items-center px-3 py-2 rounded bg-indigo-50 text-indigo-600 font-medium">
-            <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
-            บันทึกจำนวนนักศึกษา
-          </Link>
-        </li>
+      <div className="flex-1 overflow-y-auto">
+        <p className="text-xs text-gray-400 mb-2 uppercase">จัดทำแผนงบประมาณ</p>
+        <ul className="space-y-2">
+          <li>
+            <Link href="/planning/students" className="flex items-center px-3 py-2 rounded bg-indigo-50 text-indigo-600 font-medium">
+              <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
+              บันทึกจำนวนนักศึกษา
+            </Link>
+          </li>
 
-        <li>
-          <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <li>
+            <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
               <img src="/img/icon/add-people.svg" alt="" className="w-5 h-5 mr-3" />
-            </svg>
-            จัดทำแผนรายรับ
-          </Link>
-        </li>
+              จัดทำแผนรายรับ
+            </Link>
+          </li>
 
-        <li>
-          <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A4 4 0 017 16h10a4 4 0 011.879.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            จัดทำแผนรายจ่าย
-          </Link>
-        </li>
-        <li>
-          <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A4 4 0 017 16h10a4 4 0 011.879.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            จัดทำแผนงบประมาณ
-          </Link>
-        </li>
-
-        {/* Forms Dropdown */}
-        <li>
-          <details className="group">
-            <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+          <li>
+            <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
               <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m2 0a2 2 0 100-4H7a2 2 0 000 4h10z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A4 4 0 017 16h10a4 4 0 011.879.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Forms
-            </summary>
-            <ul className="pl-10 mt-1 text-sm text-gray-600 space-y-1">
-              <li>
-                <Link href="#" className="hover:underline">Form Elements</Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:underline">Form Layouts</Link>
-              </li>
-            </ul>
-          </details>
-        </li>
-
-        {/* Tables Dropdown */}
-        <li>
-          <details className="group">
-            <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+              จัดทำแผนรายจ่าย
+            </Link>
+          </li>
+          <li>
+            <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
               <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h18M3 18h18" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A4 4 0 017 16h10a4 4 0 011.879.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Tables
-            </summary>
-            <ul className="pl-10 mt-1 text-sm text-gray-600 space-y-1">
-              <li>
-                <Link href="#" className="hover:underline">Simple Table</Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:underline">Advanced Table</Link>
-              </li>
-            </ul>
-          </details>
-        </li>
+              จัดทำแผนงบประมาณ
+            </Link>
+          </li>
 
-        {/* Pages Dropdown */}
-        <li>
-          <details className="group">
-            <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
-              </svg>
-              Pages
-            </summary>
-            <ul className="pl-10 mt-1 text-sm text-gray-600 space-y-1">
-              <li>
-                <Link href="#" className="hover:underline">Login</Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:underline">Register</Link>
-              </li>
-            </ul>
-          </details>
-        </li>
-      </ul>
+          {/* Forms Dropdown */}
+          <li>
+            <details className="group">
+              <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m2 0a2 2 0 100-4H7a2 2 0 000 4h10z" />
+                </svg>
+                Forms
+                <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <ul className="pl-10 mt-1 text-sm text-gray-600 space-y-1">
+                <li>
+                  <Link href="#" className="block py-1 hover:text-indigo-600">Form Elements</Link>
+                </li>
+                <li>
+                  <Link href="#" className="block py-1 hover:text-indigo-600">Form Layouts</Link>
+                </li>
+              </ul>
+            </details>
+          </li>
 
-      {/* Others */}
-      <p className="text-xs text-gray-400 mt-6 mb-2 uppercase">Others</p>
-      <ul className="space-y-2">
-        <li>
-          <details className="group">
-            <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 11V3m0 0L7 7m4-4l4 4M11 21v-4m0 0l-4 4m4-4l4 4" />
-              </svg>
-              Charts
-            </summary>
-          </details>
-        </li>
+          {/* Tables Dropdown */}
+          <li>
+            <details className="group">
+              <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h18M3 18h18" />
+                </svg>
+                Tables
+                <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <ul className="pl-10 mt-1 text-sm text-gray-600 space-y-1">
+                <li>
+                  <Link href="#" className="block py-1 hover:text-indigo-600">Simple Table</Link>
+                </li>
+                <li>
+                  <Link href="#" className="block py-1 hover:text-indigo-600">Advanced Table</Link>
+                </li>
+              </ul>
+            </details>
+          </li>
 
-        <li>
-          <details className="group">
-            <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-              </svg>
-              UI Elements
-            </summary>
-          </details>
-        </li>
+          {/* Pages Dropdown */}
+          <li>
+            <details className="group">
+              <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
+                </svg>
+                Pages
+                <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <ul className="pl-10 mt-1 text-sm text-gray-600 space-y-1">
+                <li>
+                  <Link href="#" className="block py-1 hover:text-indigo-600">Login</Link>
+                </li>
+                <li>
+                  <Link href="#" className="block py-1 hover:text-indigo-600">Register</Link>
+                </li>
+              </ul>
+            </details>
+          </li>
+        </ul>
 
-        <li>
-          <details className="group">
-            <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1zm0 0V9m0 2v2m0 2h.01M4 4h16v16H4V4z" />
-              </svg>
-              Authentication
-            </summary>
-          </details>
-        </li>
-      </ul>
+        {/* Others */}
+        <p className="text-xs text-gray-400 mt-6 mb-2 uppercase">Others</p>
+        <ul className="space-y-2">
+          <li>
+            <details className="group">
+              <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 11V3m0 0L7 7m4-4l4 4M11 21v-4m0 0l-4 4m4-4l4 4" />
+                </svg>
+                Charts
+                <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+            </details>
+          </li>
+
+          <li>
+            <details className="group">
+              <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+                UI Elements
+                <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+            </details>
+          </li>
+
+          <li>
+            <details className="group">
+              <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1zm0 0V9m0 2v2m0 2h.01M4 4h16v16H4V4z" />
+                </svg>
+                Authentication
+                <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+            </details>
+          </li>
+        </ul>
+      </div>
     </aside>
   );
 };
