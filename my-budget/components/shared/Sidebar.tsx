@@ -48,7 +48,7 @@ const Sidebar: React.FC = () => {
           </Link>
         </li>
         <li>
-          <Link href="/planning/students" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+          <Link href="/planning/disbursement" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/document-signed.svg" alt="" className="w-5 h-5 mr-3" />
             การเบิกจ่าย
           </Link>
@@ -59,7 +59,7 @@ const Sidebar: React.FC = () => {
       <p className="text-xs text-gray-400 mb-2 uppercase">ติดตาม</p>
       <ul className="space-y-1">
         <li>
-          <Link href="/planning/students" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+          <Link href="/planning/dashboard" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
             ติดตามแผนงบประมาณ
           </Link>
@@ -90,24 +90,20 @@ const Sidebar: React.FC = () => {
         </li>
 
         <li>
-          <Link href="/planning/students" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+          <Link href="#" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
             การอนุมัติการเบิกจ่าย
           </Link>
         </li>
         </ul>
 
-      <p className="text-xs text-gray-400 mt-6 mb-2 uppercase">อื่นๆ</p>
+      <p className="text-xs text-gray-400 mb-2 uppercase">อื่นๆ</p>
       <ul className="space-y-1">
         <li>
-          <details className="group">
-            <summary className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 11V3m0 0L7 7m4-4l4 4M11 21v-4m0 0l-4 4m4-4l4 4" />
-              </svg>
-              เอกสาร
-            </summary>
-          </details>
+          <Link href="/planning/dowloadfile" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+            <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
+            เอกสาร
+          </Link>
         </li>
         </ul>
     </aside>
