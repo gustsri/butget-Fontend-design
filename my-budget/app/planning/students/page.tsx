@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
-import YearDropdownExample from "@/components/shared/year";
+import YearDropdown from "@/components/shared/year";
 
 export default function Home() {
     const [activeTab, setActiveTab] = useState("year");
@@ -16,7 +16,7 @@ export default function Home() {
                     {/* Header Tabs */}
 
                     <div className="flex items-center gap-2 border-b border-gray-200 p-4">
-                        <YearDropdownExample onYearChange={() => { }} />
+                        <YearDropdown onYearChange={() => { }} />
 
                         {/* ปุ่ม แผน */}
                         <button className="px-6 py-2 font-medium text-sm rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors duration-200">
@@ -150,7 +150,7 @@ export default function Home() {
 
                         {/* พื้นที่สำหรับ Section อื่น ๆ */}
                         <div className="text-center text-gray-400 py-8">
-                            <p>Section 2, 3, 4 ... จะอยู่ที่นี่</p>
+                            <p>Section จะอยู่ที่นี่</p>
                         </div>
                     </div>
                 </div>
