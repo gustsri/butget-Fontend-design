@@ -29,7 +29,7 @@ export default function RowItem({
   } else if (highlight === "total") {
     rowStyle += " bg-green-50 font-bold text-green-800";
     inputStyle += " bg-green-100 focus:ring-green-500 text-green-900 font-bold";
-  }
+  } 
 
   // head row
   if (type === "head") {
