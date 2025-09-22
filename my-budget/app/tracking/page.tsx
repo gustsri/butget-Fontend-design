@@ -6,149 +6,15 @@ import TrackingList from "@/components/track/TrackingList";
 // import StatusFilter from "@/components/track/StatusFilter";
 import { Search, FileText, TrendingUp } from 'lucide-react';
 
-
 // Mock data สำหรับติดตามเอกสาร
-const mockTrackingData = [
-    {
-        id: 1,
-        documentNumber: "DOC-2567-001",
-        title: "แผนจัดทำรายจ่ายปีงบประมาณ 1/2567",
-        type: "budget_plan",
-        submittedBy: "คุณสมใส การเงิน",
-        submittedDate: "2024-01-15",
-        currentStatus: "approved",
-        totalBudget: 5000000,
-        department: "ฝ่ายการเงิน",
-        approver: "คุณสมชาย ใจดี",
-        approvedDate: "2024-01-18",
-        timeline: [
-            {
-                status: "submitted",
-                date: "2024-01-15T09:00:00",
-                actor: "คุณสมใส การเงิน",
-                note: "ส่งเอกสารเพื่อขออนุมัติ"
-            },
-            {
-                status: "under_review",
-                date: "2024-01-16T10:30:00",
-                actor: "คุณสมชาย ใจดี",
-                note: "เริ่มตรวจสอบเอกสาร"
-            },
-            {
-                status: "approved",
-                date: "2024-01-18T14:20:00",
-                actor: "คุณสมชาย ใจดี",
-                note: "อนุมัติเรียบร้อย ตามแผนงบประมาณที่กำหนด"
-            }
-        ]
-    },
-    {
-        id: 2,
-        documentNumber: "DOC-2567-002",
-        title: "เบิกจ่ายค่าอุปกรณ์สำนักงาน",
-        type: "expense_request",
-        submittedBy: "คุณมาลี สำนักงาน",
-        submittedDate: "2024-02-01",
-        currentStatus: "under_review",
-        totalBudget: 150000,
-        department: "ฝ่ายจัดซื้อ",
-        approver: "คุณสมชาย ใจดี",
-        timeline: [
-            {
-                status: "submitted",
-                date: "2024-02-01T08:45:00",
-                actor: "คุณมาลี สำนักงาน",
-                note: "ส่งใบเบิกค่าอุปกรณ์สำนักงาน"
-            },
-            {
-                status: "under_review",
-                date: "2024-02-02T09:15:00",
-                actor: "คุณสมชาย ใจดี",
-                note: "อยู่ระหว่างการตรวจสอบรายละเอียด"
-            }
-        ]
-    },
-    {
-        id: 3,
-        documentNumber: "DOC-2567-003",
-        title: "แผนจัดทำรายรับปีงบประมาณ 2/2567",
-        type: "budget_plan",
-        submittedBy: "คุณดวงใจ การตลาด",
-        submittedDate: "2024-02-10",
-        currentStatus: "rejected",
-        totalBudget: 7500000,
-        department: "ฝ่ายการตลาด",
-        approver: "คุณสมชาย ใจดี",
-        rejectedDate: "2024-02-12",
-        rejectionReason: "งบประมาณด้านการตลาดสูงเกินไป ขอให้ปรับลดลง 20%",
-        timeline: [
-            {
-                status: "submitted",
-                date: "2024-02-10T13:20:00",
-                actor: "คุณดวงใจ การตลาด",
-                note: "ส่งแผนงบประมาณไตรมาสที่ 2"
-            },
-            {
-                status: "under_review",
-                date: "2024-02-11T11:00:00",
-                actor: "คุณสมชาย ใจดี",
-                note: "เริ่มตรวจสอบแผนงบประมาณ"
-            },
-            {
-                status: "rejected",
-                date: "2024-02-12T16:45:00",
-                actor: "คุณสมชาย ใจดี",
-                note: "งบประมาณด้านการตลาดสูงเกินไป ขอให้ปรับลดลง 20%"
-            }
-        ]
-    },
-    {
-        id: 4,
-        documentNumber: "DOC-2567-004",
-        title: "เบิกจ่ายค่าเดินทางประชุม",
-        type: "expense_request",
-        submittedBy: "คุณประเสริฐ ขาย",
-        submittedDate: "2024-02-15",
-        currentStatus: "pending",
-        totalBudget: 45000,
-        department: "ฝ่ายขาย",
-        timeline: [
-            {
-                status: "submitted",
-                date: "2024-02-15T14:30:00",
-                actor: "คุณประเสริฐ ขาย",
-                note: "ส่งใบเบิกค่าเดินทางไปประชุมลูกค้า"
-            }
-        ]
-    },
-    {
-        id: 5,
-        documentNumber: "DOC-2567-005",
-        title: "แผนการใช้งบประมาณ IT",
-        type: "budget_plan",
-        submittedBy: "คุณเทคโน ระบบ",
-        submittedDate: "2024-02-18",
-        currentStatus: "pending",
-        totalBudget: 2800000,
-        department: "ฝ่าย IT",
-        timeline: [
-            {
-                status: "submitted",
-                date: "2024-02-18T10:15:00",
-                actor: "คุณเทคโน ระบบ",
-                note: "ส่งแผนการใช้งบประมาณสำหรับอุปกรณ์และระบบ IT"
-            }
-        ]
-    }
-];
-
+import mockTrackingData from "@/data/mockTrackingData.json";
 
 export default function TrackingPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("all");
     const [selectedType, setSelectedType] = useState("all");
     const [selectedYear, setSelectedYear] = useState("2567");
-    const [documents] = useState(mockTrackingData);
+    const [documents] = useState<typeof mockTrackingData>(mockTrackingData);
     const [filterYear, setFilterYear] = useState<number>();
 
     // Filter documents based on search and filters
@@ -160,16 +26,19 @@ export default function TrackingPage() {
         const matchesStatus = selectedStatus === "all" || doc.currentStatus === selectedStatus;
         const matchesType = selectedType === "all" || doc.type === selectedType;
 
-        return matchesSearch && matchesStatus && matchesType;
+        // เพิ่มการกรองตามปี
+        const matchesYear = !filterYear || doc.year === filterYear;
+
+        return matchesSearch && matchesStatus && matchesType && matchesYear;
     });
 
-    // Statistics
+    // Statistics - คำนวณจากข้อมูลที่กรองแล้ว
     const stats = {
-        total: documents.length,
-        pending: documents.filter(doc => doc.currentStatus === 'pending').length,
-        underReview: documents.filter(doc => doc.currentStatus === 'under_review').length,
-        approved: documents.filter(doc => doc.currentStatus === 'approved').length,
-        rejected: documents.filter(doc => doc.currentStatus === 'rejected').length
+        total: filteredDocuments.length,
+        pending: filteredDocuments.filter(doc => doc.currentStatus === 'pending').length,
+        underReview: filteredDocuments.filter(doc => doc.currentStatus === 'under_review').length,
+        approved: filteredDocuments.filter(doc => doc.currentStatus === 'approved').length,
+        rejected: filteredDocuments.filter(doc => doc.currentStatus === 'rejected').length
     };
 
     return (
@@ -288,12 +157,37 @@ export default function TrackingPage() {
                                 {/* Year Filter */}
                                 <YearDropdown
                                     selectedYear={filterYear}
-                                    onYearChange={setFilterYear} // ⬅️ ต้องมี prop นี้
+                                    onYearChange={setFilterYear}
+                                    startYear={2566}
+                                    endYear={2570}
+                                    placeholder="เลือกปีงบประมาณ"
                                 />
                             </div>
 
-                            <div className="text-sm text-gray-500">
-                                แสดง {filteredDocuments.length} จาก {documents.length} เอกสาร
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm text-gray-500">
+                                    แสดง {filteredDocuments.length} จาก {documents.length} เอกสาร
+                                    {filterYear && (
+                                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                            ปี {filterYear}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Clear Filters Button */}
+                                {(filterYear || searchTerm || selectedStatus !== "all" || selectedType !== "all") && (
+                                    <button
+                                        onClick={() => {
+                                            setFilterYear(undefined);
+                                            setSearchTerm("");
+                                            setSelectedStatus("all");
+                                            setSelectedType("all");
+                                        }}
+                                        className="text-sm text-blue-600 hover:text-blue-800"
+                                    >
+                                        ล้างตัวกรอง
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

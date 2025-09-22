@@ -1,0 +1,138 @@
+[
+    {
+        "id": 1,
+        "documentNumber": "DOC-2567-001",
+        "title": "แผนใช้งบประมาณด้านการเรียนการสอน IT ประจำปี 2567",
+        "type": "budget_plan",
+        "submittedBy": "อาจารย์สมพร คณะ IT",
+        "submittedDate": "2024-01-15",
+        "currentStatus": "approved",
+        "totalBudget": 5000000,
+        "department": "งานบริหารงบประมาณ คณะ IT",
+        "approver": "รศ.ดร.วิทยา คณบดีคณะ IT",
+        "approvedDate": "2024-01-18",
+        "year": 2567,
+        "timeline": [
+            {
+                "status": "submitted",
+                "date": "2024-01-15T09:00:00",
+                "actor": "อาจารย์สมพร คณะ IT",
+                "note": "ส่งเอกสารแผนใช้งบประมาณประจำปี 2567"
+            },
+            {
+                "status": "under_review",
+                "date": "2024-01-16T10:30:00",
+                "actor": "รศ.ดร.วิทยา คณบดีคณะ IT",
+                "note": "ตรวจสอบแผนงบประมาณด้านการเรียนการสอน"
+            },
+            {
+                "status": "approved",
+                "date": "2024-01-18T14:20:00",
+                "actor": "รศ.ดร.วิทยา คณบดีคณะ IT",
+                "note": "อนุมัติเรียบร้อย สามารถดำเนินการตามแผนได้"
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "documentNumber": "DOC-2567-002",
+        "title": "เบิกจ่ายค่าอุปกรณ์คอมพิวเตอร์ห้องแลป",
+        "type": "expense_request",
+        "submittedBy": "คุณมณี งานเทคนิค",
+        "submittedDate": "2024-02-01",
+        "currentStatus": "under_review",
+        "totalBudget": 150000,
+        "department": "งานห้องปฏิบัติการคณะ IT",
+        "approver": "รศ.ดร.วิทยา คณบดีคณะ IT",
+        "year": 2567,
+        "timeline": [
+            {
+                "status": "submitted",
+                "date": "2024-02-01T08:45:00",
+                "actor": "คุณมณี งานเทคนิค",
+                "note": "ส่งใบเบิกซื้อคอมพิวเตอร์และอุปกรณ์เสริม"
+            },
+            {
+                "status": "under_review",
+                "date": "2024-02-02T09:15:00",
+                "actor": "รศ.ดร.วิทยา คณบดีคณะ IT",
+                "note": "อยู่ระหว่างตรวจสอบความจำเป็นและรายละเอียด"
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "documentNumber": "DOC-2566-003",
+        "title": "แผนใช้งบประมาณวิจัยด้าน AI ภาคเรียนที่ 2/2566",
+        "type": "budget_plan",
+        "submittedBy": "ผศ.ดร.ดวงใจ งานวิจัย IT",
+        "submittedDate": "2023-02-10",
+        "currentStatus": "rejected",
+        "totalBudget": 7500000,
+        "department": "งานวิจัยและพัฒนา คณะ IT",
+        "approver": "รศ.ดร.วิทยา คณบดีคณะ IT",
+        "rejectedDate": "2023-02-12",
+        "rejectionReason": "งบประมาณสูงเกินไป ขอให้ปรับลดลง 20%",
+        "year": 2566,
+        "timeline": [
+            {
+                "status": "submitted",
+                "date": "2023-02-10T13:20:00",
+                "actor": "ผศ.ดร.ดวงใจ งานวิจัย IT",
+                "note": "ส่งแผนใช้งบประมาณโครงการวิจัย AI"
+            },
+            {
+                "status": "under_review",
+                "date": "2023-02-11T11:00:00",
+                "actor": "รศ.ดร.วิทยา คณบดีคณะ IT",
+                "note": "ตรวจสอบแผนงบประมาณวิจัย"
+            },
+            {
+                "status": "rejected",
+                "date": "2023-02-12T16:45:00",
+                "actor": "รศ.ดร.วิทยา คณบดีคณะ IT",
+                "note": "งบประมาณสูงเกินไป ขอให้ปรับลดลง 20%"
+            }
+        ]
+    },
+    {
+        "id": 4,
+        "documentNumber": "DOC-2568-004",
+        "title": "เบิกจ่ายค่าเดินทางเข้าร่วมประชุมวิชาการ IT",
+        "type": "expense_request",
+        "submittedBy": "อาจารย์ประเสริฐ สาขาซอฟต์แวร์",
+        "submittedDate": "2025-02-15",
+        "currentStatus": "pending",
+        "totalBudget": 45000,
+        "department": "สาขาวิศวกรรมซอฟต์แวร์ คณะ IT",
+        "year": 2568,
+        "timeline": [
+            {
+                "status": "submitted",
+                "date": "2025-02-15T14:30:00",
+                "actor": "อาจารย์ประเสริฐ สาขาซอฟต์แวร์",
+                "note": "ส่งใบเบิกค่าเดินทางไปประชุมวิชาการระดับนานาชาติ"
+            }
+        ]
+    },
+    {
+        "id": 5,
+        "documentNumber": "DOC-2567-005",
+        "title": "แผนพัฒนาระบบสารสนเทศคณะ IT",
+        "type": "budget_plan",
+        "submittedBy": "คุณเทคโน งานระบบ",
+        "submittedDate": "2024-02-18",
+        "currentStatus": "pending",
+        "totalBudget": 2800000,
+        "department": "ฝ่าย IT Support",
+        "year": 2567,
+        "timeline": [
+            {
+                "status": "submitted",
+                "date": "2024-02-18T10:15:00",
+                "actor": "คุณเทคโน งานระบบ",
+                "note": "ส่งแผนการใช้งบประมาณสำหรับอัปเกรดระบบสารสนเทศคณะ"
+            }
+        ]
+    }
+]

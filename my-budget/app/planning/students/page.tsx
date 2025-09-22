@@ -2,159 +2,114 @@
 import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import YearDropdown from "@/components/shared/year";
+import TableRow from "@/components/plan/TableRow";
+import mockStudentData from "@/data/mockStudentData.json";
 
 export default function Home() {
-    const [activeTab, setActiveTab] = useState("year");
+  const [editableCategory, setEditableCategory] = useState<"plan" | "actual">(
+    "plan"
+  );
+  const [data, setData] = useState(mockStudentData);
 
-    return (
-        <div className="flex min-h-screen bg-gray-50">
-            <Sidebar />
+  // group ข้อมูลตาม degree → department
+  const groupedData = data.reduce((acc, item) => {
+    if (!acc[item.degree]) acc[item.degree] = {};
+    if (!acc[item.degree][item.department])
+      acc[item.degree][item.department] = [];
+    acc[item.degree][item.department].push(item);
+    return acc;
+  }, {} as Record<string, Record<string, typeof data>>);
 
-            {/* Main content - เพิ่ม margin-left เท่ากับ width ของ sidebar */}
-            <main className="flex-1 ml-64 p-6">
-                <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-                    {/* Header Tabs */}
-
-                    <div className="flex items-center gap-2 border-b border-gray-200 p-4">
-                        <YearDropdown onYearChange={() => { }} />
-
-                        {/* ปุ่ม แผน */}
-                        <button className="px-6 py-2 font-medium text-sm rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors duration-200">
-                            แผน
-                        </button>
-
-                        {/* ปุ่ม จริง */}
-                        <button className="px-6 py-2 font-medium text-sm rounded-md bg-blue-500 text-white shadow-md transition-colors duration-200">
-                            จริง
-                        </button>
-                    </div>
-
-                    {/* Main Content */}
-                    <div className="p-6">
-                        {/* Section 1: ปริมาดเสีย */}
-                        <div className="mb-8">
-                            <div className="flex items-center mb-4">
-                                <h2 className="text-lg font-semibold text-gray-800">
-                                    ปริญญาตรี
-                                </h2>
-                                <button className="ml-2 text-gray-400 hover:text-gray-600 transition-colors">
-                                    📋
-                                </button>
-                            </div>
-
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr className="text-sm text-gray-600 border-b border-gray-200">
-                                            <th className="text-left pb-3 px-2 w-48">
-                                                วท.บ. (เทคโนโลยีสารสนเทศ)
-                                            </th>
-                                            <th className="text-center pb-3 px-2 w-20">บีที 1</th>
-                                            <th className="text-center pb-3 px-2 w-20">บีที 2</th>
-                                            <th className="text-center pb-3 px-2 w-20">บีที 3</th>
-                                            <th className="text-center pb-3 px-2 w-20">บีที 4</th>
-                                            <th className="text-center pb-3 px-2 w-20">บีที 5</th>
-                                            <th className="text-center pb-3 px-2 w-20">บีที 6</th>
-                                            <th className="text-center pb-3 px-2 w-20">รวม</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr className="border-b border-gray-100">
-                                            <td className="py-3 px-2">
-                                                <div className="bg-blue-500 text-white px-4 py-2 rounded text-center font-medium shadow-sm">
-                                                    แผน
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    210
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    222
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    172
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    160
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    29
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    0
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-blue-100 border border-blue-300 px-3 py-2 rounded text-center font-semibold text-blue-800">
-                                                    764
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td className="py-3 px-2">
-                                                <div className="bg-blue-400 text-white px-4 py-2 rounded text-center font-medium shadow-sm">
-                                                    จริง
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    209
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    192
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    162
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    159
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    29
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-gray-50 border border-gray-300 px-3 py-2 rounded text-center hover:bg-gray-100 transition-colors">
-                                                    0
-                                                </div>
-                                            </td>
-                                            <td className="px-2">
-                                                <div className="bg-blue-100 border border-blue-300 px-3 py-2 rounded text-center font-semibold text-blue-800">
-                                                    751
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* พื้นที่สำหรับ Section อื่น ๆ */}
-                        <div className="text-center text-gray-400 py-8">
-                            <p>Section จะอยู่ที่นี่</p>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
+  const handleEdit = (id: number, field: string, value: number) => {
+    setData((prev) =>
+      prev.map((row) =>
+        row.id === id ? { ...row, [field]: Number(value) } : row
+      )
     );
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
+
+      <main className="flex-1 ml-64 p-6">
+        <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Header: เลือกว่าจะให้แก้ แผน หรือ จริง */}
+          <div className="flex items-center gap-2 border-b border-gray-200 p-4">
+            <YearDropdown onYearChange={() => {}} />
+
+            <span className="font-medium">เลือกแก้ไข:</span>
+            <button
+              onClick={() => setEditableCategory("plan")}
+              className={`px-6 py-2 font-medium text-sm rounded-md transition-colors duration-200 ${
+                editableCategory === "plan"
+                  ? "bg-blue-500 text-white shadow-md"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              แผน
+            </button>
+            <button
+              onClick={() => setEditableCategory("actual")}
+              className={`px-6 py-2 font-medium text-sm rounded-md transition-colors duration-200 ${
+                editableCategory === "actual"
+                  ? "bg-blue-500 text-white shadow-md"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              จริง
+            </button>
+          </div>
+
+          {/* Main Content */}
+          <div className="p-6">
+            {Object.keys(groupedData).map((degree) => (
+              <div key={degree} className="mb-8">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">
+                  {degree}
+                </h2>
+
+                {Object.keys(groupedData[degree]).map((dept) => (
+                  <div
+                    key={dept}
+                    className="overflow-x-auto bg-white rounded-lg shadow mb-6"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-700 p-2">
+                      {dept}
+                    </h3>
+                    <div className="min-w-full">
+                      {/* Header */}
+                      <TableRow category="หมวด" type="head" />
+
+                      {/* แสดงทั้ง แผน และ จริง */}
+                      {groupedData[degree][dept].map((item) => (
+                        <TableRow
+                          key={item.id}
+                          category={item.category}
+                          year1={item.year1}
+                          year2={item.year2}
+                          year3={item.year3}
+                          year4={item.year4}
+                          year5={item.year5}
+                          year6={item.year6}
+                          total={item.total}
+                          highlight={
+                            item.categoryType === "plan" ? "plan" : "actual"
+                          }
+                          editable={item.categoryType === editableCategory}
+                          onEdit={(field, value) =>
+                            handleEdit(item.id, field, value)
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 }
