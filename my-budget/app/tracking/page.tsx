@@ -6,6 +6,7 @@ import TrackingList from "@/components/track/TrackingList";
 // import StatusFilter from "@/components/track/StatusFilter";
 import { Search, FileText, TrendingUp } from 'lucide-react';
 
+
 // Mock data สำหรับติดตามเอกสาร
 const mockTrackingData = [
     {
@@ -141,22 +142,24 @@ const mockTrackingData = [
     }
 ];
 
+
 export default function TrackingPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("all");
     const [selectedType, setSelectedType] = useState("all");
     const [selectedYear, setSelectedYear] = useState("2567");
     const [documents] = useState(mockTrackingData);
+    const [filterYear, setFilterYear] = useState<number>();
 
     // Filter documents based on search and filters
     const filteredDocuments = documents.filter(doc => {
         const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            doc.documentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            doc.submittedBy.toLowerCase().includes(searchTerm.toLowerCase());
-        
+            doc.documentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            doc.submittedBy.toLowerCase().includes(searchTerm.toLowerCase());
+
         const matchesStatus = selectedStatus === "all" || doc.currentStatus === selectedStatus;
         const matchesType = selectedType === "all" || doc.type === selectedType;
-        
+
         return matchesSearch && matchesStatus && matchesType;
     });
 
@@ -192,7 +195,7 @@ export default function TrackingPage() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="bg-white rounded-lg shadow p-6">
                             <div className="flex items-center">
                                 <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -283,7 +286,10 @@ export default function TrackingPage() {
                                 </select>
 
                                 {/* Year Filter */}
-                                <YearDropdown />
+                                <YearDropdown
+                                    selectedYear={filterYear}
+                                    onYearChange={setFilterYear} // ⬅️ ต้องมี prop นี้
+                                />
                             </div>
 
                             <div className="text-sm text-gray-500">

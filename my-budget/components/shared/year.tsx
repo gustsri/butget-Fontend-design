@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 
 interface YearDropdownProps {
   selectedYear?: number;
-  onYearChange: (year: number) => void;
+  onYearChange?: (year: number) => void; // เปลี่ยนจาก required เป็น optional
   startYear?: number;
   endYear?: number;
   placeholder?: string;
@@ -13,10 +13,10 @@ interface YearDropdownProps {
 
 const YearDropdown: React.FC<YearDropdownProps> = ({
   selectedYear,
-  onYearChange,
-  startYear = 2020,
-  endYear = new Date().getFullYear() + 5,
-  placeholder = "เลือกปี",
+  onYearChange = () => {}, // ให้ค่า default เป็น empty function
+  startYear = 2563, // ปี พ.ศ. 2563 = ค.ศ. 2020
+  endYear = new Date().getFullYear() + 543 + 5, // แปลงปีปัจจุบันเป็น พ.ศ. และเพิ่ม 5 ปี
+  placeholder = "เลือกปี พ.ศ.",
   className = "",
   buttonClassName = "",
   disabled = false
@@ -24,7 +24,7 @@ const YearDropdown: React.FC<YearDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Generate array of years
+  // Generate array of years (Buddhist Era)
   const years = Array.from(
     { length: endYear - startYear + 1 }, 
     (_, index) => startYear + index
@@ -51,7 +51,9 @@ const YearDropdown: React.FC<YearDropdownProps> = ({
   };
 
   const handleYearSelect = (year: number) => {
-    onYearChange(year);
+    if (onYearChange && typeof onYearChange === 'function') {
+      onYearChange(year);
+    }
     setIsOpen(false);
   };
 
@@ -74,7 +76,7 @@ const YearDropdown: React.FC<YearDropdownProps> = ({
           <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          {selectedYear ? `ปี ${selectedYear}` : placeholder}
+          {selectedYear ? `ปี พ.ศ. ${selectedYear}` : placeholder}
         </span>
         <svg 
           className={`w-4 h-4 ml-2 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
@@ -105,7 +107,7 @@ const YearDropdown: React.FC<YearDropdownProps> = ({
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
-                    ปี {year}
+                    ปี พ.ศ. {year}
                   </span>
                 </button>
               </li>
@@ -119,30 +121,32 @@ const YearDropdown: React.FC<YearDropdownProps> = ({
 
 // Usage Example Component
 const YearDropdownExample: React.FC = () => {
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const currentBuddhistYear = new Date().getFullYear() + 543;
+  const [selectedYear, setSelectedYear] = useState<number>(currentBuddhistYear);
   const [budgetYear, setBudgetYear] = useState<number | undefined>();
 
   return (
     <div className="p-8 space-y-6 bg-gray-50 min-h-screen">
       <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-bold mb-6 text-gray-800">Year Dropdown Examples</h2>
+        <h2 className="text-xl font-bold mb-6 text-gray-800">ตัวอย่างการใช้งาน Dropdown ปี พ.ศ.</h2>
         
         <div className="space-y-4">
-          {/* Default Year Dropdown */}
+          {/* Current Year Dropdown */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              เลือกปีปัจจุบัน
+              เลือกปี พ.ศ.
             </label>
             <YearDropdown
               selectedYear={selectedYear}
               onYearChange={setSelectedYear}
-              startYear={2020}
-              endYear={2030}
+              startYear={2560}
+              endYear={2575}
               className="w-full"
             />
             {selectedYear && (
-              <p className="mt-2 text-sm text-gray-600">
-                ปีที่เลือก: <span className="font-semibold">{selectedYear}</span>
+              <p className="mt-2 text-sm text-blue-600">
+                ปีที่เลือก: <span className="font-semibold">พ.ศ. {selectedYear}</span> 
+                <span className="text-gray-500 ml-2">(ค.ศ. {selectedYear - 543})</span>
               </p>
             )}
           </div>
@@ -150,20 +154,21 @@ const YearDropdownExample: React.FC = () => {
           {/* Budget Year Dropdown */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              เลือกปีงบประมาณ
+              เลือกปีงบประมาณ พ.ศ.
             </label>
             <YearDropdown
               selectedYear={budgetYear}
               onYearChange={setBudgetYear}
               startYear={2564}
               endYear={2570}
-              placeholder="เลือกปีงบประมาณ"
+              placeholder="เลือกปีงบประมาณ พ.ศ."
               className="w-full"
               buttonClassName="border-green-300 focus:ring-green-500 focus:border-green-500"
             />
             {budgetYear && (
               <p className="mt-2 text-sm text-green-600">
-                ปีงบประมาณที่เลือก: <span className="font-semibold">{budgetYear}</span>
+                ปีงบประมาณที่เลือก: <span className="font-semibold">พ.ศ. {budgetYear}</span>
+                <span className="text-gray-500 ml-2">(ค.ศ. {budgetYear - 543})</span>
               </p>
             )}
           </div>
@@ -174,7 +179,7 @@ const YearDropdownExample: React.FC = () => {
               Dropdown ที่ปิดการใช้งาน
             </label>
             <YearDropdown
-              selectedYear={2023}
+              selectedYear={2567}
               onYearChange={() => {}}
               disabled={true}
               className="w-full"
