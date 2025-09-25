@@ -9,12 +9,8 @@ const Sidebar: React.FC = () => {
 
       {/* Logo */}
       <div className="flex items-center mb-6">
-        <div className="w-8 h-8 bg-indigo-500 rounded flex items-center justify-center mr-2">
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-          </svg>
-        </div>
-        <span className="text-xl font-semibold text-gray-800">TailAdmin</span>
+        <img src="/img/icon/IT logo.png" alt="Logo" className="w-20 h-20" />
+        <span className="text-xl font-semibold text-gray-800">Budget Management</span>
       </div>
 
       {/* Menu */}
@@ -35,14 +31,21 @@ const Sidebar: React.FC = () => {
         </li>
 
         <li>
-          <Link href="/planning/students" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+          <Link href="/planning/expense" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
             จัดทำแผนรายจ่าย
           </Link>
         </li>
-        
+
         <li>
           <Link href="/planning/students" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+            <img src="/img/icon/document.svg" alt="" className="w-5 h-5 mr-3" />
+            ปรับแก้แผนงบประมาณ
+          </Link>
+        </li>
+
+        <li>
+          <Link href="/planning/" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/document.svg" alt="" className="w-5 h-5 mr-3" />
             จัดทำแผนงบประมาณ
           </Link>
@@ -53,7 +56,7 @@ const Sidebar: React.FC = () => {
             การเบิกจ่าย
           </Link>
         </li>
-            </ul>
+      </ul>
 
       {/* tracking */}
       <p className="text-xs text-gray-400 mb-2 uppercase">ติดตาม</p>
@@ -78,10 +81,10 @@ const Sidebar: React.FC = () => {
             ตรวจสอบหลักฐานการเบิกจ่าย
           </Link>
         </li>
-        </ul>
-        {/* allow */}
+      </ul>
+      {/* allow */}
       <p className="text-xs text-gray-400 mt-6 mb-2 uppercase">อนุมัติ</p>
-            <ul className="space-y-1">
+      <ul className="space-y-1">
         <li>
           <Link href="/approval/AppDocument" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
@@ -95,7 +98,7 @@ const Sidebar: React.FC = () => {
             การอนุมัติการเบิกจ่าย
           </Link>
         </li>
-        </ul>
+      </ul>
 
       <p className="text-xs text-gray-400 mb-2 uppercase">อื่นๆ</p>
       <ul className="space-y-1">
@@ -105,15 +108,15 @@ const Sidebar: React.FC = () => {
             เอกสาร
           </Link>
         </li>
-        </ul>
-        <ul className="space-y-1">
+      </ul>
+      <ul className="space-y-1">
         <li>
           <Link href="/other/disbursement" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
             ยื่นเอกสารการเบิก
           </Link>
         </li>ห
-        </ul>
+      </ul>
     </aside>
   );
 };

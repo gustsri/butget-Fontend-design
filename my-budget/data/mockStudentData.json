@@ -57,7 +57,7 @@
   },
   {
     "id": 5,
-    "degree": "ปริญญาตโท",
+    "degree": "ปริญญาโท",
     "department": "เทคโนโลยีสารสนเทศ",
     "category": "แผน",
     "categoryType": "plan",
@@ -71,7 +71,7 @@
   },
   {
     "id": 6,
-    "degree": "ปริญญาตโท",
+    "degree": "ปริญญาโท",
     "department": "เทคโนโลยีสารสนเทศ",
     "category": "จริง",
     "categoryType": "actual",

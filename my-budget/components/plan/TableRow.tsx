@@ -27,68 +27,71 @@ export default function TableRow({
   editable = false,
   onEdit,
 }: TableRowProps) {
-  const rowStyle = "grid grid-cols-8 items-center";
-
   // ✅ หัวตาราง
   if (type === "head") {
     return (
-      <div className={`${rowStyle} border-b-2 border-gray-300 font-semibold`}>
-        <div className="text-left px-3 py-2">{category}</div>
-        <div className="text-center py-2">ปีที่ 1</div>
-        <div className="text-center py-2">ปีที่ 2</div>
-        <div className="text-center py-2">ปีที่ 3</div>
-        <div className="text-center py-2">ปีที่ 4</div>
-        <div className="text-center py-2">ปีที่ 5</div>
-        <div className="text-center py-2">ปีที่ 6</div>
-        <div className="text-center py-2">รวม</div>
+      <div className="grid grid-cols-8 gap-3 mb-3 text-sm text-gray-700 items-center">
+        <div className="text-center font-medium">หมวด</div>
+        <div className="text-center font-medium">ปีที่ 1</div>
+        <div className="text-center font-medium">ปีที่ 2</div>
+        <div className="text-center font-medium">ปีที่ 3</div>
+        <div className="text-center font-medium">ปีที่ 4</div>
+        <div className="text-center font-medium">ปีที่ 5</div>
+        <div className="text-center font-medium">ปีที่ 6</div>
+        <div className="text-center font-medium">รวม</div>
       </div>
     );
   }
 
   // ✅ สไตล์หมวด (แผน/จริง)
-  let categoryStyle =
-    "flex items-center justify-center font-medium px-3 py-2 min-w-[80px]";
+  let categoryBadgeStyle = "inline-block px-4 py-2 text-sm font-medium rounded text-white min-w-[80px] text-center";
   if (highlight === "plan") {
-    categoryStyle += " bg-blue-500 text-white rounded";
+    categoryBadgeStyle += " bg-blue-500";
   } else if (highlight === "actual") {
-    categoryStyle += " bg-blue-400 text-white rounded";
+    categoryBadgeStyle += " bg-blue-400";
   } else {
-    categoryStyle += " bg-gray-500 text-white rounded";
+    categoryBadgeStyle += " bg-gray-500";
   }
 
-  const cellStyle =
-    "text-center px-2 py-2 min-w-[70px] border rounded bg-white";
-  const totalStyle =
-    "text-center px-2 py-2 min-w-[70px] border rounded bg-blue-50 font-semibold text-blue-800";
+  const renderCell = (field: string, value?: number, isTotal = false) => {
+    const containerClass =
+      "border rounded min-w-[60px] h-10 flex items-center justify-center relative";
+    const bgClass = isTotal ? "bg-blue-50" : editable ? "bg-white" : "bg-gray-100";
+    const textClass = isTotal
+      ? "font-semibold text-blue-800"
+      : editable
+        ? ""
+        : "text-gray-500";
 
-  const baseCellStyle =
-    "flex items-center justify-center text-center h-10 leading-10 min-w-[70px]";
-
-  const renderCell = (field: string, value?: number) =>
-    editable ? (
-      <input
-        type="number"
-        value={value || 0}
-        onChange={(e) => onEdit?.(field, Number(e.target.value))}
-        className={`${baseCellStyle} bg-white appearance-none outline-none`}
-        style={{ MozAppearance: "textfield" }} // ✅ fix Firefox
-      />
-    ) : (
-      <div className={`${baseCellStyle} bg-gray-50`}>{value || 0}</div>
+    return (
+      <div className={`${containerClass} ${bgClass} ${textClass}`}>
+        {editable && !isTotal ? (
+          <input
+            type="number"
+            value={value || 0}
+            onChange={(e) => onEdit?.(field, Number(e.target.value))}
+            className="w-full h-full text-center bg-transparent outline-none appearance-none border-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            style={{ MozAppearance: "textfield" }}
+          />
+        ) : (
+          <span>{value || 0}</span>
+        )}
+      </div>
     );
+  };
 
 
-  // ✅ row ข้อมูลจริง
+  // ✅ แสดง row แบบเดิม (แผน/จริง คนละแถว)
   return (
-    <div className={rowStyle}>
-      <div className={categoryStyle}>{category}</div>
+    <div className="grid grid-cols-8 gap-3 items-center mb-2">
+      <div className={categoryBadgeStyle}>{category}</div>
       {renderCell("year1", year1)}
       {renderCell("year2", year2)}
       {renderCell("year3", year3)}
       {renderCell("year4", year4)}
       {renderCell("year5", year5)}
       {renderCell("year6", year6)}
-      <div className={totalStyle}>{total || 0}</div>
+      {renderCell("total", total, true)}
     </div>
   );
 }

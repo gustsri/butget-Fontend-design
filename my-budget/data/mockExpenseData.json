@@ -1,0 +1,68 @@
+[
+  {
+    "id": 1,
+    "year": 2569,
+    "sections": [
+      {
+        "title": "1. งบบุคลากร",
+        "type": "head",
+        "items": [
+          {
+            "label": "1.1 ค่าใช้จ่ายบุคลากร",
+            "type": "head"
+          },
+          {
+            "label": "1.1.1 เงินเดือนและค่าจ้าง",
+            "type": "head"
+          },
+          {
+            "accountCode": "5101010101.00",
+            "label": "ค่าจ้างลูกจ้างชั่วคราวพนักงาน (งบประมาณเงินรายได้)",
+            "term": "บุคลากร",
+            "value": 0,
+            "indent": true,
+            "type": "row"
+          },
+          {
+            "accountCode": "5101010205.00",
+            "label": "เงินเพิ่มค่าจ้าง 6%",
+            "term": "บุคลากร",
+            "value": 0,
+            "indent": true,
+            "type": "row"
+          },
+          {
+            "accountCode": "5101010308.00",
+            "label": "ค่าจ้างพนักงานราชการ",
+            "term": "บุคลากร",
+            "value": 0,
+            "indent": true,
+            "type": "row"
+          }
+        ]
+      },
+      {
+        "title": "2. ค่าใช้จ่ายทั่วไป",
+        "type": "head",
+        "items": [
+          {
+            "accountCode": "5201020000.00",
+            "label": "ค่าใช้จ่ายสำนักงาน",
+            "term": "ทั่วไป",
+            "value": 0,
+            "indent": true,
+            "type": "row"
+          },
+          {
+            "accountCode": "5201040000.00",
+            "label": "ค่าสาธารณูปโภค",
+            "term": "ทั่วไป",
+            "value": 0,
+            "indent": true,
+            "type": "row"
+          }
+        ]
+      }
+    ]
+  }
+]
