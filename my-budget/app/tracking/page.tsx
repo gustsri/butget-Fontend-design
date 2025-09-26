@@ -49,7 +49,7 @@ export default function TrackingPage() {
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">ติดตามการอนุมัติเอกสาร</h1>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">ติดตามการอนุมัติเอกสาร(งานแผน)</h1>
                         <p className="text-gray-600">ตรวจสอบสถานะการอนุมัติโครงการและการเบิกจ่ายต่างๆ</p>
                     </div>
 
