@@ -19,7 +19,7 @@ export default function ApprovedList() {
       <main className="flex-1 ml-64 p-6">
         <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <CheckCircle className="text-green-600 w-7 h-7" />
-          เอกสารที่อนุมัติแล้ว
+          เอกสารที่รอส่งใบเสร็จ
         </h1>
 
         <div className="bg-white shadow rounded-2xl p-6">

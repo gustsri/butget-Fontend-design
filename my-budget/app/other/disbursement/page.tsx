@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import {
-  Upload, File, X, Send, FolderOpen, FileText,
+  Upload, File, X, Send, FileText,
   Image, Video, Music, Archive, Check, AlertCircle, Clock
 } from "lucide-react";
 import Sidebar from "@/components/shared/Sidebar";
@@ -115,11 +115,10 @@ function FileSender() {
   const totalSize = files.reduce((acc, file) => acc + file.size, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-black">
       {/* Upload Area */}
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload Files</h2>
-
+        <h2 className="text-lg font-semibold mb-4">Upload Files</h2>
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragActive
@@ -133,12 +132,10 @@ function FileSender() {
           onClick={() => fileInputRef.current?.click()}
         >
           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <div className="text-lg font-medium text-gray-900 mb-2">
+          <div className="text-lg font-medium mb-2">
             Drag and drop files here
           </div>
-          <div className="text-gray-600 mb-4">
-            or click to browse from your computer
-          </div>
+          <div className="mb-4">or click to browse from your computer</div>
           <div className="text-sm text-gray-500">
             Supports: Images, Documents, Videos, Archives (Max: 100MB per file)
           </div>
@@ -158,10 +155,10 @@ function FileSender() {
       {files.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold">
               Selected Files ({files.length})
             </h3>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm">
               Total size: {formatFileSize(totalSize)}
             </div>
           </div>
@@ -176,7 +173,7 @@ function FileSender() {
                 >
                   <FileIcon className="w-8 h-8 text-blue-600 mr-3" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">
+                    <div className="text-sm font-medium truncate">
                       {file.name}
                     </div>
                     <div className="text-xs text-gray-500">
@@ -209,7 +206,7 @@ function FileSender() {
 
       {/* Recipients */}
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">email ผู้รับ</h3>
+        <h3 className="text-lg font-semibold mb-4">Email ผู้รับ</h3>
         <div className="space-y-3">
           <div>
             <input
@@ -224,7 +221,7 @@ function FileSender() {
             />
             <button
               onClick={() => addRecipient(recipientInput)}
-              className="mt-2 w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200"
+              className="mt-2 w-full bg-gray-100 py-2 rounded-lg hover:bg-gray-200"
             >
               เพิ่ม
             </button>
@@ -232,7 +229,7 @@ function FileSender() {
 
           {recipients.length > 0 && (
             <div className="space-y-2">
-              <div className="text-sm font-medium text-gray-700">
+              <div className="text-sm font-medium">
                 Recipients ({recipients.length}):
               </div>
               {recipients.map((email, index) => (
@@ -240,7 +237,7 @@ function FileSender() {
                   key={index}
                   className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
                 >
-                  <span className="text-sm text-gray-900">{email}</span>
+                  <span className="text-sm">{email}</span>
                   <button
                     onClick={() => removeRecipient(email)}
                     className="text-gray-400 hover:text-red-500"
@@ -256,7 +253,7 @@ function FileSender() {
 
       {/* Message */}
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Message (Optional)</h3>
+        <h3 className="text-lg font-semibold mb-4">หมายเหตุ</h3>
         <textarea
           placeholder="Add a message to your files..."
           value={message}
@@ -312,12 +309,13 @@ function FileSender() {
 // ✅ Main Page Component
 export default function Disbursement() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
-      <main className="p-6">
-        <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden p-6">
-          <h1 className="text-2xl font-semibold mb-6">Disbursement</h1>
-          {/* Embed FileSender here */}
+      <main className="flex-1 flex justify-center items-center p-6">
+        <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg overflow-hidden p-6 text-black">
+          <h1 className="text-2xl font-semibold mb-6 text-center">
+            ส่งเอกสารการขอเบิก
+          </h1>
           <FileSender />
         </div>
       </main>

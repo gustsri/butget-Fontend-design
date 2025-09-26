@@ -6,32 +6,37 @@ import { FileText, FileSpreadsheet, FileImage, Download } from "lucide-react";
 export default function DownloadPage() {
   const categories = [
     {
-      title: ":bookmark_tabs: เอกสารทั่วไป",
+      title: "เอกสารงบประมาณ",
       files: [
         {
-          name: "ใบเสนอราคา.docx",
+          name: "แผนงบประมาณรายรับ.pdf",
           path: "/documents/quotation.docx",
           icon: <FileText className="w-6 h-6 text-blue-500" />,
         },
         {
-          name: "รายงานประจำเดือน.pdf",
+          name: "แผนงบประมาณรายจ่าย.pdf",
           path: "/documents/report.pdf",
           icon: <FileText className="w-6 h-6 text-red-500" />,
         },
       ],
     },
     {
-      title: ":moneybag: การเงิน",
+      title: "ข้อมูลการเบิก",
       files: [
         {
-          name: "ข้อมูลการเงิน.xlsx",
-          path: "/documents/finance.xlsx",
+          name: "ข้อมูลการเบิกโครงการ.pdf",
+          path: "/documents/finance.pdf",
           icon: <FileSpreadsheet className="w-6 h-6 text-green-500" />,
+        },
+        {
+          name: "ข้อมูลการข้อเบิกค่าอุปกรณ์.pdf",
+          path: "/documents/report.pdf",
+          icon: <FileText className="w-6 h-6 text-red-500" />,
         },
       ],
     },
     {
-      title: ":frame_photo: รูปภาพ",
+      title: "รูปภาพ",
       files: [
         {
           name: "รูปตัวอย่าง.jpg",
@@ -52,7 +57,7 @@ export default function DownloadPage() {
         <div className="max-w-4xl mx-auto">
           {/* Title */}
           <h1 className="text-4xl font-extrabold text-gray-900 mb-10 border-b-4 border-blue-500 pb-2">
-            :open_file_folder: ดาวน์โหลดเอกสาร
+            ดาวน์โหลดเอกสาร
           </h1>
 
           {/* Categories */}
