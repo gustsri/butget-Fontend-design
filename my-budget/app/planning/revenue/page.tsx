@@ -29,14 +29,14 @@ export default function RevenuePage() {
           <div className="p-6">
             <div className="mb-8 text-gray-800">
               {/* Header ของหน้า */}
-              <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">
+              <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-6">
+                 <h1 className="text-2xl font-bold text-center">
                   คณะเทคโนโลยีสารสนเทศ
                 </h1>
-                <h2 className="text-xl font-semibold text-center text-gray-700 mb-1">
+                <h2 className="text-center mt-2 text-blue-100">
                   ประมาณการรายรับเงินรายได้
                 </h2>
-                <p className="text-center text-gray-600">
+                <p className="text-center mt-2 text-blue-100">
                   ประจำปีงบประมาณ {selectedYear}
                 </p>
               </div>
