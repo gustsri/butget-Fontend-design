@@ -1,0 +1,184 @@
+[
+  {
+    "form": "F-3",
+    "year": 2569,
+    "version": 1,
+    "updatedDate": "15 มกราคม 2569",
+    "tableType": "withAccount",
+    "sections": [
+      {
+        "title": "ค่าใช้จ่ายบุคลากร",
+        "items": [
+          {
+            "accountCode": "01",
+            "label": "เงินเดือน",
+            "budget": 2000000,
+            "income": 0,
+            "total": 2000000
+          },
+          {
+            "accountCode": "02",
+            "label": "ค่าตอบแทนพิเศษ",
+            "budget": 500000,
+            "income": 0,
+            "total": 500000
+          },
+          {
+            "accountCode": "03",
+            "label": "สวัสดิการและสิทธิประโยชน์",
+            "budget": 300000,
+            "income": 0,
+            "total": 300000
+          }
+        ]
+      },
+      {
+        "title": "ค่าใช้จ่ายดำเนินงาน",
+        "items": [
+          {
+            "accountCode": "04",
+            "label": "ค่าวัสดุสำนักงาน",
+            "budget": 150000,
+            "income": 0,
+            "total": 150000
+          },
+          {
+            "accountCode": "05",
+            "label": "ค่าสาธารณูปโภค",
+            "budget": 200000,
+            "income": 0,
+            "total": 200000
+          },
+          {
+            "accountCode": "06",
+            "label": "ค่าเดินทางและที่พัก",
+            "budget": 100000,
+            "income": 0,
+            "total": 100000
+          }
+        ]
+      },
+      {
+        "title": "ค่าครุภัณฑ์และสิ่งก่อสร้าง",
+        "items": [
+          {
+            "accountCode": "07",
+            "label": "ครุภัณฑ์สำนักงาน",
+            "budget": 250000,
+            "income": 0,
+            "total": 250000
+          },
+          {
+            "accountCode": "08",
+            "label": "ปรับปรุงอาคาร/สถานที่",
+            "budget": 500000,
+            "income": 0,
+            "total": 500000
+          }
+        ]
+      },
+      {
+        "title": "งบลงทุน/โครงการพิเศษ",
+        "items": [
+          {
+            "accountCode": "09",
+            "label": "โครงการวิจัยและพัฒนา",
+            "budget": 300000,
+            "income": 0,
+            "total": 300000
+          },
+          {
+            "accountCode": "10",
+            "label": "โครงการพัฒนาหลักสูตร",
+            "budget": 120000,
+            "income": 0,
+            "total": 120000
+          }
+        ]
+      },
+      {
+        "title": "รวมค่าใช้จ่ายทั้งหมด",
+        "items": [
+          {
+            "accountCode": "",
+            "label": "รวมทั้งสิ้น",
+            "budget": 4170000,
+            "income": 0,
+            "total": 4170000,
+            "highlight": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "form": "F-5",
+    "year": 2569,
+    "version": 1,
+    "updatedDate": "15 มกราคม 2569",
+    "tableType": "noAccount",
+    "sections": [
+      {
+        "title": "สรุปประมาณการรายรับ-รายจ่าย",
+        "columns": [
+          "รายการ",
+          "เงินงบประมาณ",
+          "เงินรายได้",
+          "รวมทั้งสิ้น"
+        ],
+        "items": [
+          {
+            "label": "เงินงบประมาณที่รัฐบาลจัดสรรให้",
+            "budget": 0,
+            "income": 0,
+            "total": 0
+          },
+          {
+            "label": "เงินรายได้สถาบัน",
+            "budget": 0,
+            "income": 0,
+            "total": 0,
+            "indent": true
+          },
+          {
+            "label": "รวมรายได้ทั้งสิ้น",
+            "budget": 0,
+            "income": 0,
+            "total": 0,
+            "highlight": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "form": "F-23",
+    "year": 2569,
+    "version": 1,
+    "updatedDate": "15 มกราคม 2569",
+    "tableType": "noAccount",
+    "sections": [
+      {
+        "title": "การจัดสรรตามประเภทค่าใช้จ่าย",
+        "items": [
+          {
+            "label": "1. หักสำรองจ่ายร้อยละ .......",
+            "amount": 0,
+            "note": ""
+          },
+          {
+            "label": "2. ค่าธรรมเนียมต่าง ๆ",
+            "amount": 0,
+            "note": ""
+          },
+          {
+            "label": "รวมประมาณการรายจ่าย",
+            "amount": 0,
+            "note": "",
+            "highlight": true
+          }
+        ]
+      }
+    ]
+  }
+]
