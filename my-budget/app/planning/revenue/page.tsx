@@ -17,7 +17,7 @@ export default function RevenuePage() {
       {/* Sidebar */}
       <Sidebar />
 
-      {/* Main content */}
+      {/* Main */}
       <main className="flex-1 ml-64 p-6">
         <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Header: YearDropdown */}

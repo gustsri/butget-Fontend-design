@@ -38,7 +38,7 @@ const Sidebar: React.FC = () => {
         </li>
 
         <li>
-          <Link href="/planning/students" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+          <Link href="/planning/revenue-adjust" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/document.svg" alt="" className="w-5 h-5 mr-3" />
             ปรับแก้แผนงบประมาณ
           </Link>
