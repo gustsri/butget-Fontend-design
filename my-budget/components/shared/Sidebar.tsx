@@ -111,11 +111,19 @@ const Sidebar: React.FC = () => {
       </ul>
       <ul className="space-y-1">
         <li>
-          <Link href="/other/disbursement" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+          <Link href="/other/addcode" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
-            ยื่นเอกสารการเบิก
+            ออกรหัสรายจ่าย
           </Link>
-        </li>ห
+        </li>
+      </ul>
+      <ul className="space-y-1">
+        <li>
+          <Link href="/other/slip" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+            <img src="/img/icon/person-add.svg" alt="" className="w-5 h-5 mr-3" />
+          ใบเสร็จ
+          </Link>
+        </li>
       </ul>
     </aside>
   );
