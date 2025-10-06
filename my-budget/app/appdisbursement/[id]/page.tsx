@@ -9,17 +9,15 @@ import {
 
 const mockDocumentDetail = {
     id: 1,
-    title: "คำขอเบิกจ่ายงบประมาณโครงการพัฒนาระบบสารสนเทศ",
-    year: "2567",
+    title: "คำขอเบิกจ่ายค่าไวนิล",
+    year: "2568",
     quarter: 2,
-    allocatedBudget: 8000000,
-    totalBudget: 6200000,
+    allocatedBudget: 100000,
+    totalBudget: 3000,
     description: "การเบิกจ่ายงบประมาณสำหรับโครงการประจำไตรมาสที่ 2",
     expenses: [
-        { category: "ค่าจ้างที่ปรึกษา", amount: 2500000, percentage: 40 },
-        { category: "ค่าอุปกรณ์", amount: 2000000, percentage: 32 },
-        { category: "ค่าอบรม", amount: 1000000, percentage: 16 },
-        { category: "ค่าใช้จ่ายเบ็ดเตล็ด", amount: 700000, percentage: 12 }
+        { category: "ค่าจ้างไวนิล", amount: 3000, percentage: 100 }
+        
     ]
 };
 
