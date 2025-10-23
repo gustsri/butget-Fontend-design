@@ -40,32 +40,53 @@ export default function Home() {
 
       <main className="flex-1 ml-64 p-6">
         <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header: เลือกว่าจะให้แก้ แผน หรือ จริง */}
-          <div className="flex items-center gap-4 border-b border-gray-200 p-6">
-            <YearDropdown onYearChange={() => {}} />
+          {/* Header Card (รวม Top Bar + Faculty Header) */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+            {/* 🔹 Top Bar */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <h1 className="text-2xl font-bold text-white">
+                    ระบบสนับสนุนการจัดทำงบประมาณคณะเทคโนโลยีสารสนเทศ
+                  </h1>
+                </div>
 
-            <span className="font-medium text-gray-700">เลือกแก้ไข:</span>
-            <button
-              onClick={() => setEditableCategory("plan")}
-              className={`px-4 py-2 font-medium text-sm rounded-md transition-colors duration-200 ${
-                editableCategory === "plan"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              แผน
-            </button>
-            <button
-              onClick={() => setEditableCategory("actual")}
-              className={`px-4 py-2 font-medium text-sm rounded-md transition-colors duration-200 ${
-                editableCategory === "actual"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              จริง
-            </button>
+                <YearDropdown onYearChange={() => { }} />
+              </div>
+            </div>
+
+            {/* 🔹 Faculty Header Section */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 border-b-4 border-orange-400 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-white">ติดตามการใช้จ่ายงบประมาณ</h2>
+                <h1 className="text-blue-200 text-xl mt-1">ประจำปีงบประมาณ 2567</h1>
+              </div>
+
+              {/* 🔹 ปุ่ม แผน / จริง */}
+              <div className="flex items-center gap-3">
+                <span className="font-medium text-blue-100">เลือกดูข้อมูล:</span>
+                <button
+                  onClick={() => setEditableCategory("plan")}
+                  className={`px-4 py-2 font-medium text-sm rounded-md transition-colors duration-200 ${editableCategory === "plan"
+                      ? "bg-white text-blue-700 shadow-md"
+                      : "bg-blue-600 text-blue-100 hover:bg-blue-700"
+                    }`}
+                >
+                  แผน
+                </button>
+                <button
+                  onClick={() => setEditableCategory("actual")}
+                  className={`px-4 py-2 font-medium text-sm rounded-md transition-colors duration-200 ${editableCategory === "actual"
+                      ? "bg-white text-blue-700 shadow-md"
+                      : "bg-blue-600 text-blue-100 hover:bg-blue-700"
+                    }`}
+                >
+                  จริง
+                </button>
+              </div>
+            </div>
           </div>
+
 
           {/* Main Content */}
           <div className="p-6">
