@@ -2,75 +2,76 @@
 
 import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
-import YearDropdown from "@/components/shared/year";
 import RowItem from "@/components/plan/RowItem";
+import YearDropdown from "@/components/shared/year";
 import mockRevenueData from "@/data/mockRevenueData.json";
 
 export default function RevenuePage() {
   const [selectedYear, setSelectedYear] = useState<number>(2567);
-
-  // ดึงข้อมูลปีที่เลือกจาก mockRevenueData
   const yearData = mockRevenueData.find((d) => d.year === selectedYear);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Sidebar */}
       <Sidebar />
 
-      {/* Main */}
+      {/* Main Content */}
       <main className="flex-1 ml-64 p-6">
-        <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header: YearDropdown */}
-          <div className="flex items-center gap-2 border-b border-gray-200 p-4">
-            <YearDropdown onYearChange={(year) => setSelectedYear(year)} />
+        <div className="max-w-7xl mx-auto">
+          {/* Header Card */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+            {/* Top Bar with Logo and Title */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">
+                      ระบบสนับสนุนการจัดทำงบประมาณคณะเทคโนโลยีสารสนเทศ 
+                      
+                    </h1>
+                  </div>
+                </div>
+                <YearDropdown
+                  selectedYear={selectedYear}
+                  onYearChange={(y) => setSelectedYear(Number(y))}
+                />
+              </div>
+            </div>
+
+            {/* Document Title Section */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-5 border-b-4 border-orange-400">
+              <h2 className="text-xl font-bold text-white text-center">
+                จัดทำแผนงบประมาณรายรับ
+              </h2>
+              <p className="text-center text-blue-100 mt-2 text-sm">
+                ประจำปีงบประมาณ พ.ศ. {selectedYear}
+              </p>
+            </div>
           </div>
 
-          {/* Main Content */}
-          <div className="p-6">
-            <div className="mb-8 text-gray-800">
-              {/* Header ของหน้า */}
-              <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-6">
-                 <h1 className="text-2xl font-bold text-center">
-                  คณะเทคโนโลยีสารสนเทศ
-                </h1>
-                <h2 className="text-center mt-2 text-blue-100">
-                  ประมาณการรายรับเงินรายได้
-                </h2>
-                <p className="text-center mt-2 text-blue-100">
-                  ประจำปีงบประมาณ {selectedYear}
-                </p>
-              </div>
 
-              {/* รายการรายรับ (loop JSON) */}
-              <div className="space-y-6">
-                {yearData?.sections.map((section, idx) => (
-                  <div
-                    key={idx}
-                    className="divide-y divide-gray-200 bg-gray-50 rounded-lg"
-                  >
-                    {/* หัวข้อใหญ่ */}
-                    <RowItem label={section.title} type="head" />
-
-                    {/* รายการย่อย */}
-                    {section.items.map((item: any, i: number) => (
-                      <RowItem
-                        key={i}
-                        label={item.label}
-                        value={item.value}
-                        indent={item.indent}
-                        highlight={item.highlight}
-                        type={item.type}
-                      />
-                    ))}
-                  </div>
+          {/* Revenue Table */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+            {yearData?.sections.map((section, idx) => (
+              <div key={idx}>
+                <RowItem label={section.title} type="head" />
+                {section.items.map((item, i) => (
+                  <RowItem
+                    key={i}
+                    label={item.label}
+                    value={item.value}
+                    indent={item.indent}
+                    highlight={item.highlight}
+                    type={item.type}
+                  />
                 ))}
               </div>
-            </div>
+            ))}
+          </div>
 
-            {/* พื้นที่ Section อื่น ๆ */}
-            <div className="mb-8">
-              {/* <p>Section จะอยู่ที่นี่</p> */}
-            </div>
+          <div className="mt-8 text-center text-sm text-gray-500">
+            <p>ระบบบริหารจัดการงบประมาณ - คณะเทคโนโลยีสารสนเทศ</p>
+            <p className="mt-1">© 2567</p>
           </div>
         </div>
       </main>

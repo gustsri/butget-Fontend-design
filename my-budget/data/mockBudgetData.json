@@ -1,0 +1,108 @@
+{
+  "2567": {
+    "summary": {
+      "total": 1200000,
+      "spent": 780000,
+      "pending": 150000,
+      "remaining": 270000
+    },
+    "monthlySpending": [
+      {
+        "month": "ต.ค.",
+        "income": 8106843.89,
+        "expense": 5248180.98,
+        "incomeTotal": 8106843.89,
+        "expenseTotal": 5248180.98
+      },
+      {
+        "month": "พ.ย.",
+        "income": 9106843.39,
+        "expense": 6742459.33,
+        "incomeTotal": 17213687.28,
+        "expenseTotal": 11990640.31
+      },
+      {
+        "month": "ธ.ค.",
+        "income": 14893442.97,
+        "expense": 7484459.33,
+        "incomeTotal": 32107130.25,
+        "expenseTotal": 19475099.64
+      },
+      {
+        "month": "ม.ค.",
+        "income": 23767454.53,
+        "expense": 10421544.83,
+        "incomeTotal": 55874584.78,
+        "expenseTotal": 29896644.47
+      },
+      {
+        "month": "ก.พ.",
+        "income": 27728995.28,
+        "expense": 13050585.85,
+        "incomeTotal": 83603580.06,
+        "expenseTotal": 42947230.32
+      },
+      {
+        "month": "มี.ค.",
+        "income": 32114161.61,
+        "expense": 16175649.64,
+        "incomeTotal": 115717741.67,
+        "expenseTotal": 59122879.96
+      },
+      {
+        "month": "เม.ย.",
+        "income": 32817104.78,
+        "expense": 18926377.60,
+        "incomeTotal": 148534846.45,
+        "expenseTotal": 78049257.56
+      },
+      {
+        "month": "พ.ค.",
+        "income": 33562425.10,
+        "expense": 22025330.94,
+        "incomeTotal": 182097271.55,
+        "expenseTotal": 100074588.50
+      },
+      {
+        "month": "มิ.ย.",
+        "income": 38114161.61,
+        "expense": 24176043.29,
+        "incomeTotal": 220211433.16,
+        "expenseTotal": 124250631.79
+      },
+      {
+        "month": "ก.ค.",
+        "income": 42097559.55,
+        "expense": 26860000.09,
+        "incomeTotal": 262308992.71,
+        "expenseTotal": 151110631.88
+      }
+    ],
+    "projects": [
+      {
+        "name": "โครงการพัฒนาเว็บไซต์ระบบสารสนเทศ",
+        "department": "ฝ่ายเทคโนโลยี",
+        "budget": 150000,
+        "used": 120000,
+        "remaining": 30000,
+        "status": "ดำเนินการอยู่"
+      },
+      {
+        "name": "โครงการฝึกอบรมบุคลากร",
+        "department": "ฝ่ายบุคคล",
+        "budget": 80000,
+        "used": 80000,
+        "remaining": 0,
+        "status": "เสร็จสิ้น"
+      },
+      {
+        "name": "โครงการจัดซื้อครุภัณฑ์",
+        "department": "ฝ่ายจัดซื้อ",
+        "budget": 200000,
+        "used": 100000,
+        "remaining": 100000,
+        "status": "รอเบิก"
+      }
+    ]
+  }
+}

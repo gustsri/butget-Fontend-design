@@ -2,9 +2,9 @@
 
 type RowItemProps = {
   label: string;
-  value?: number; // เก็บเป็น number
+  value?: number;
   indent?: boolean;
-  highlight?: "normal" | "total" | "deduct";
+  highlight?: "deduct" | "total";
   type?: "row" | "head";
 };
 
@@ -12,47 +12,59 @@ export default function RowItem({
   label,
   value,
   indent,
-  highlight = "normal",
-  type = "row",
+  highlight,
+  type,
 }: RowItemProps) {
-  // base styles
-  let rowStyle = "flex items-center px-4 py-2";
-  let labelStyle = "flex-1 text-gray-800";
-  let inputStyle =
-    "w-40 text-right border rounded px-2 py-1 focus:outline-none focus:ring-2";
-
-  // indent
-  if (indent) labelStyle += " pl-8";
-
-  // highlight deduct / total
-  if (highlight === "deduct") {
-    rowStyle += " bg-gray-50 font-semibold";
-    inputStyle += " focus:ring-red-500";
-  } else if (highlight === "total") {
-    rowStyle += " bg-green-50 font-bold text-green-800";
-    inputStyle +=
-      " bg-green-100 focus:ring-green-500 text-green-900 font-bold";
-  }
-
-  // head row
-  if (type === "head") {
-    rowStyle += " font-semibold bg-gray-50 px-6";
-  }
-
-  // format number → 6,899,220
   const formattedValue =
-    typeof value === "number" ? value.toLocaleString("th-TH") : "";
+    typeof value === "number"
+      ? value.toLocaleString("th-TH", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+      : "";
+
+  if (type === "head") {
+    return (
+      <div className="bg-blue-500 px-6 py-3 border-b border-blue-600">
+        <h3 className="text-white font-semibold text-sm">{label}</h3>
+      </div>
+    );
+  }
+
+
+
+  // base styles
+  let rowClass =
+    "flex items-center justify-between px-6 py-3.5 border-b border-gray-200 hover:bg-gray-50 transition-colors";
+  let labelClass = "text-gray-700 text-sm";
+  let valueClass = "text-right font-medium text-sm min-w-[180px]";
+
+  if (indent) {
+    labelClass += " pl-8";
+  }
+
+  // highlight style
+  if (highlight === "deduct") {
+    rowClass = "flex items-center justify-between px-6 py-3.5 bg-red-50 border-b border-gray-200";
+    labelClass += " text-red-800 font-medium";
+    valueClass += " text-red-700";
+  } else if (highlight === "total") {
+    rowClass =
+      "flex items-center justify-between px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200";
+    labelClass += " text-green-800 font-bold";
+    valueClass += " text-green-700 font-bold text-base";
+  }
 
   return (
-    <div className={rowStyle}>
-      <span className={labelStyle}>{label}</span>
-      {type === "row" && (
-        <input
-          type="text"
-          value={formattedValue}
-          readOnly
-          className={inputStyle}
-        />
-      )}
+    <div className={rowClass}>
+      <span className={labelClass}>{label}</span>
+      <div className="flex items-center gap-2">
+        {highlight === "deduct" && (
+          <span className="text-red-600 text-xs font-medium">หัก</span>
+        )}
+        <span className={valueClass}>{formattedValue}</span>
+        <span className="text-gray-500 text-xs ml-1">บาท</span>
+      </div>
     </div>
   );
+}
