@@ -34,11 +34,33 @@ export default function DisbursementPage() {
 
       <main className="flex-1 ml-64 p-6">
         <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-6">
-            <h1 className="text-2xl font-bold text-center">เอกสารเบิกจ่ายที่สามารถอนุมัติได้</h1>
-            <p className="text-center mt-2 text-blue-100">จัดการและอนุมัติคำขอเบิกจ่ายงบประมาณ</p>
+          {/* Header Card (Top Bar + Section Header) */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+            {/* 🔹 Top Bar */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-white">
+                ระบบสนับสนุนการจัดทำงบประมาณคณะเทคโนโลยีสารสนเทศ
+              </h1>
+
+              <YearDropdown
+                selectedYear={selectedYear}
+                onYearChange={(year) => setSelectedYear(year)}
+                startYear={minYear}
+                endYear={maxYear}
+              />
+            </div>
+
+            {/* 🔹 Section Header */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-5 border-b-4 border-orange-400 text-center">
+              <h2 className="text-xl font-bold text-white">
+                อนุมัติการเบิกจ่ายงบประมาณ
+              </h2>
+              <p className="text-blue-100 mt-2 text-m">
+                จัดการและอนุมัติคำขอเบิกจ่ายงบประมาณ
+              </p>
+            </div>
           </div>
+
 
           {/* Filter Section */}
           <div className="p-6 border-b border-gray-200">
