@@ -1,32 +1,23 @@
 "use client";
 import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
-import YearDropdown from "@/components/shared/year";
 import DocumentList from "@/components/approval/appdisbursement";
 import mockDisbursementData from "@/data/mockDisbursementData.json";
 
 export default function DisbursementPage() {
-  const currentYear = new Date().getFullYear() + 543;
-
-  // ดึงปีทั้งหมดจาก mock
-  const years = [...new Set(mockDisbursementData.map((doc) => Number(doc.year)))];
-  const minYear = Math.min(...years);
-  const maxYear = Math.max(...years);
-
-  // ถ้ามีปีปัจจุบันใน mock → default = ปีปัจจุบัน, ถ้าไม่มี → default = "ทั้งหมด"
-  const [selectedYear, setSelectedYear] = useState<number | "ทั้งหมด">(
-    years.includes(currentYear) ? currentYear : "ทั้งหมด"
+  const [selectedStatus, setSelectedStatus] = useState<"ทั้งหมด" | "pending" | "approved">(
+    "ทั้งหมด"
   );
 
   const handleDocumentClick = (documentId: number) => {
     window.location.href = `/appdisbursement/${documentId}`;
   };
 
-  // filter ตามปี
+  // 🔹 กรองข้อมูลตามสถานะ
   const filteredDocuments =
-    selectedYear && selectedYear !== "ทั้งหมด"
-      ? mockDisbursementData.filter((doc) => Number(doc.year) === selectedYear)
-      : mockDisbursementData;
+    selectedStatus === "ทั้งหมด"
+      ? mockDisbursementData
+      : mockDisbursementData.filter((doc) => doc.status === selectedStatus);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -34,20 +25,13 @@ export default function DisbursementPage() {
 
       <main className="flex-1 ml-64 p-6">
         <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header Card (Top Bar + Section Header) */}
+          {/* Header Card */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
             {/* 🔹 Top Bar */}
             <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 flex items-center justify-between">
               <h1 className="text-2xl font-bold text-white">
                 ระบบสนับสนุนการจัดทำงบประมาณคณะเทคโนโลยีสารสนเทศ
               </h1>
-
-              <YearDropdown
-                selectedYear={selectedYear}
-                onYearChange={(year) => setSelectedYear(year)}
-                startYear={minYear}
-                endYear={maxYear}
-              />
             </div>
 
             {/* 🔹 Section Header */}
@@ -61,19 +45,24 @@ export default function DisbursementPage() {
             </div>
           </div>
 
-
           {/* Filter Section */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <YearDropdown
-                selectedYear={selectedYear}
-                onYearChange={(year) => setSelectedYear(year)}
-                startYear={minYear}
-                endYear={maxYear}
-              />
-              <div className="text-sm text-gray-500">
-                รออนุมัติ {filteredDocuments.filter((doc) => doc.status === "pending").length} เอกสาร
-              </div>
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            {/* 🔹 Dropdown เลือกสถานะ */}
+            <select
+              value={selectedStatus}
+              onChange={(e) =>
+                setSelectedStatus(e.target.value as "ทั้งหมด" | "pending" | "approved")
+              }
+              className="border border-gray-300 rounded-lg px-4 py-2 text-gray-700 bg-white shadow-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ทั้งหมด">สถานะทั้งหมด</option>
+              <option value="pending">รออนุมัติ</option>
+              <option value="approved">อนุมัติแล้ว</option>
+            </select>
+
+            <div className="text-sm text-gray-500">
+              รออนุมัติ{" "}
+              {mockDisbursementData.filter((doc) => doc.status === "pending").length} เอกสาร
             </div>
           </div>
 
