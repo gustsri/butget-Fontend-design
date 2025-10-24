@@ -117,7 +117,7 @@ export default function Dashboard() {
             <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 border-b-4 border-orange-400 flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold text-white">ติดตามการใช้จ่ายงบประมาณ </h2>
-                <h1 className="text-blue-200 text-xl mt-1">ประจำปีงบประมาณ {selectedYear}</h1>
+                <p className="text-blue-100 mt-2 text-m">ประจำปีงบประมาณ {selectedYear}</p>
               </div>
 
               <div className="text-right">
