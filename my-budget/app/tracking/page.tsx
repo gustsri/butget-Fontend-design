@@ -66,7 +66,7 @@ export default function TrackingPage() {
                         {/* 🔹 Faculty Header Section */}
                         <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-5 border-b-4 border-orange-400">
                             <h2 className="text-xl font-bold text-white text-center">
-                                ติดตามการอนุมัติเอกสาร(งานแผน)
+                                ติดตามการอนุมัติเอกสาร
                             </h2>
                             <p className="text-blue-100 mt-2 text-center text-m">
                                 ตรวจสอบสถานะการอนุมัติโครงการและการเบิกจ่ายต่างๆ

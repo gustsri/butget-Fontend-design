@@ -79,12 +79,12 @@ const Sidebar: React.FC = () => {
           </Link>
         </li>
 
-        <li>
+        {/* <li>
           <Link href="/planning/appprovedisbursemnet" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/document-signed.svg" alt="" className="w-5 h-5 mr-3 flex-shrink-0" />
             <span>ส่งเอกสารใบเสร็จ</span>
           </Link>
-        </li>
+        </li> */}
       </ul>
 
       {/* ======================== */}
@@ -102,7 +102,7 @@ const Sidebar: React.FC = () => {
               <line x1="8" x2="16" y1="21" y2="21" />
               <line x1="12" x2="12" y1="17" y2="21" />
             </svg>
-            <span>ติดตามแผนงบประมาณ</span>
+            <span>ติดตามงบประมาณ</span>
           </Link>
         </li>
 

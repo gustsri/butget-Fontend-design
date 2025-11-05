@@ -4,6 +4,7 @@ import Sidebar from "@/components/shared/Sidebar";
 import YearDropdown from "@/components/shared/year";
 import TableRow from "@/components/plan/TableRow";
 import mockStudentData from "@/data/mockStudentData.json";
+import { ChevronDown } from "lucide-react";
 
 export default function Home() {
   const [editableCategory, setEditableCategory] = useState<"plan" | "actual">("plan");
@@ -58,8 +59,8 @@ export default function Home() {
             {/* 🔹 Faculty Header Section */}
             <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 border-b-4 border-orange-400 flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-bold text-white">ติดตามการใช้จ่ายงบประมาณ</h2>
-                <h1 className="text-blue-200 text-xl mt-1">ประจำปีงบประมาณ 2567</h1>
+                <h2 className="text-xl font-bold text-white">บันทึกจำนวนนักศึกษา</h2>
+                <h1 className="text-blue-200 text-l mt-1">ประจำปีงบประมาณ 2567</h1>
               </div>
 
               {/* 🔹 ปุ่ม แผน / จริง */}
@@ -87,20 +88,20 @@ export default function Home() {
             </div>
           </div>
 
-
           {/* Main Content */}
           <div className="p-6">
             {Object.keys(groupedData).map((degree) => (
               <div key={degree} className="mb-8">
                 {/* ปุ่ม degree */}
                 <div
-                  className="flex items-center gap-2 mb-4 cursor-pointer"
+                  className="flex items-center gap-2 mb-4 cursor-pointer select-none"
                   onClick={() => toggleDegree(degree)}
                 >
                   <h2 className="text-lg font-bold text-gray-800">{degree}</h2>
-                  <span className="text-gray-400">
-                    {openDegrees[degree] ?? true ? "▲" : "▼"}
-                  </span>
+                  <ChevronDown
+                    className={`w-5 h-5 text-gray-500 transform transition-transform duration-200 ${openDegrees[degree] ?? true ? "rotate-180" : ""
+                      }`}
+                  />
                 </div>
 
                 {(openDegrees[degree] ?? true) &&
@@ -108,15 +109,16 @@ export default function Home() {
                     <div key={dept} className="bg-gray-50 rounded-lg p-6 mb-6 border">
                       {/* ปุ่ม department */}
                       <div
-                        className="flex items-center gap-2 mb-4 cursor-pointer"
+                        className="flex items-center gap-2 mb-4 cursor-pointer select-none"
                         onClick={() => toggleDept(dept)}
                       >
                         <h3 className="text-base font-semibold text-gray-700">
                           วท.บ. ({dept})
                         </h3>
-                        <span className="text-gray-400">
-                          {openDepts[dept] ?? true ? "▲" : "▼"}
-                        </span>
+                        <ChevronDown
+                          className={`w-4 h-4 text-gray-500 transform transition-transform duration-200 ${openDepts[dept] ?? true ? "rotate-180" : ""
+                            }`}
+                        />
                       </div>
 
                       {(openDepts[dept] ?? true) && (

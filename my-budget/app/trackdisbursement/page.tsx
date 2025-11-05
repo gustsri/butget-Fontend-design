@@ -37,14 +37,31 @@ export default function TrackingPage() {
 
       <main className="flex-1 ml-64 p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">
-              ตรวจสอบหลักฐานการเบิกจ่าย
-            </h1>
-            <p className="text-gray-900">
-              กดที่เอกสารเพื่อดูรายละเอียดเพิ่มเติม
-            </p>
+          {/* Header Card */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+            {/* 🔹 Top Bar */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">ระบบสนับสนุนการจัดทำงบประมาณคณะเทคโนโลยีสารสนเทศ</h1>
+              </div>
+
+              <YearDropdown
+                selectedYear={filterYear}
+                onYearChange={setFilterYear}
+                startYear={2566}
+                endYear={2570}
+              />
+            </div>
+
+            {/* 🔹 Faculty Header Section */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-5 border-b-4 border-orange-400">
+              <h2 className="text-xl font-bold text-white text-center">
+                ติดตามการอนุมัติเอกสาร
+              </h2>
+              <p className="text-blue-100 mt-2 text-center text-m">
+                ตรวจสอบสถานะการอนุมัติโครงการและการเบิกจ่ายต่างๆ
+              </p>
+            </div>
           </div>
 
           {/* Filters */}

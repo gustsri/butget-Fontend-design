@@ -1,14 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import RowItem from "@/components/plan/RowItem";
 import YearDropdown from "@/components/shared/year";
 import mockRevenueData from "@/data/mockRevenueData.json";
 
+type Item = {
+  label: string;
+  value?: number;
+  indent?: boolean;
+  highlight?: "deduct" | "total";
+  type?: "row" | "head";
+};
+
+type Section = {
+  title: string;
+  items: Item[];
+};
+
+type YearBlock = {
+  year: number;
+  sections: Section[];
+};
+
 export default function RevenuePage() {
+  // เก็บข้อมูลเป็น state เพื่อให้แก้ไขได้
+  const [data, setData] = useState<YearBlock[]>(mockRevenueData as YearBlock[]);
   const [selectedYear, setSelectedYear] = useState<number>(2567);
-  const yearData = mockRevenueData.find((d) => d.year === selectedYear);
+
+  const yearData = useMemo(
+    () => data.find((d) => d.year === selectedYear),
+    [data, selectedYear]
+  );
+
+  // อัปเดตค่า value แบบ immutable
+  const handleEdit = (sectionIdx: number, itemIdx: number, nextValue: number) => {
+    setData((prev) =>
+      prev.map((y) => {
+        if (y.year !== selectedYear) return y;
+        return {
+          ...y,
+          sections: y.sections.map((s, sIdx) => {
+            if (sIdx !== sectionIdx) return s;
+            return {
+              ...s,
+              items: s.items.map((it, iIdx) => {
+                if (iIdx !== itemIdx) return it;
+                return { ...it, value: nextValue };
+              }),
+            };
+          }),
+        };
+      })
+    );
+  };
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -26,8 +72,7 @@ export default function RevenuePage() {
                 <div className="flex items-center gap-4">
                   <div>
                     <h1 className="text-2xl font-bold text-white">
-                      ระบบสนับสนุนการจัดทำงบประมาณคณะเทคโนโลยีสารสนเทศ 
-                      
+                      ระบบสนับสนุนการจัดทำงบประมาณคณะเทคโนโลยีสารสนเทศ
                     </h1>
                   </div>
                 </div>
@@ -49,20 +94,21 @@ export default function RevenuePage() {
             </div>
           </div>
 
-
           {/* Revenue Table */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-            {yearData?.sections.map((section, idx) => (
-              <div key={idx}>
+            {yearData?.sections.map((section, sIdx) => (
+              <div key={sIdx}>
                 <RowItem label={section.title} type="head" />
-                {section.items.map((item, i) => (
+                {section.items.map((item, iIdx) => (
                   <RowItem
-                    key={i}
+                    key={`${sIdx}-${iIdx}`}
                     label={item.label}
                     value={item.value}
-                    indent={item.indent}
+                    indent={!!item.indent}
                     highlight={item.highlight}
                     type={item.type}
+                    editable={item.type !== "head"} // ให้แก้ไขได้ทุกรายการที่ไม่ใช่ head
+                    onEdit={(val) => handleEdit(sIdx, iIdx, val)}
                   />
                 ))}
               </div>
