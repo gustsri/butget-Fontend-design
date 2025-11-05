@@ -91,29 +91,30 @@ export default function RowItem({
   const EditableValue = (
     <>
       <input
-        inputMode="decimal"
-        className={`text-right ${valueClass} border rounded-md px-2 py-1 w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white`}
-        value={text}
-        onChange={(e) => {
-          // ยอมให้พิมพ์ได้อิสระ แล้วค่อยฟอร์แมตตอน blur
-          setText(e.target.value);
-        }}
-        onBlur={() => {
-          const num = toNumber(text);
-          // ฟอร์แมตกลับเป็นมีคอมมา
-          const formatted = num.toLocaleString("th-TH", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          });
-          setText(formatted);
-          onEdit?.(num);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            (e.target as HTMLInputElement).blur();
-          }
-        }}
-      />
+  inputMode="decimal"
+  className={`text-right ${valueClass} text-black border rounded-md px-2 py-1 w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white`}
+  value={text}
+  onChange={(e) => {
+    // ยอมให้พิมพ์ได้อิสระ แล้วค่อยฟอร์แมตตอน blur
+    setText(e.target.value);
+  }}
+  onBlur={() => {
+    const num = toNumber(text);
+    // ฟอร์แมตกลับเป็นมีคอมมา
+    const formatted = num.toLocaleString("th-TH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    setText(formatted);
+    onEdit?.(num);
+  }}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      (e.target as HTMLInputElement).blur();
+    }
+  }}
+/>
+
       <span className="text-gray-500 text-xs ml-1">บาท</span>
     </>
   );

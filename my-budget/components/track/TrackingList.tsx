@@ -161,36 +161,37 @@ export default function TrackingList({ documents }: TrackingListProps) {
                         </div>
 
                         {/* Document Info Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                            <div className="flex items-center space-x-2 text-sm">
-                                <User className="w-4 h-4 text-gray-400" />
-                                <div>
-                                    <span className="text-gray-500">ผู้ส่ง: </span>
-                                    <span className="font-medium">{doc.submittedBy}</span>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-2 text-sm">
-                                <Calendar className="w-4 h-4 text-gray-400" />
-                                <div>
-                                    <span className="text-gray-500">วันที่ส่ง: </span>
-                                    <span className="font-medium">{formatDate(doc.submittedDate)}</span>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-2 text-sm">
-                                <DollarSign className="w-4 h-4 text-gray-400" />
-                                <div>
-                                    <span className="text-gray-500">จำนวนเงิน: </span>
-                                    <span className="font-medium">{formatBudget(doc.totalBudget)}</span>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-2 text-sm">
-                                <Building2 className="w-4 h-4 text-gray-400" />
-                                <div>
-                                    <span className="text-gray-500">หน่วยงาน: </span>
-                                    <span className="font-medium">{doc.department}</span>
-                                </div>
-                            </div>
-                        </div>
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+    <div className="flex items-center space-x-2 text-sm">
+        <User className="w-4 h-4 text-gray-400" />
+        <div>
+            <span className="text-gray-500">ผู้ส่ง: </span>
+            <span className="font-medium text-black">{doc.submittedBy}</span>
+        </div>
+    </div>
+    <div className="flex items-center space-x-2 text-sm">
+        <Calendar className="w-4 h-4 text-gray-400" />
+        <div>
+            <span className="text-gray-500">วันที่ส่ง: </span>
+            <span className="font-medium text-black">{formatDate(doc.submittedDate)}</span>
+        </div>
+    </div>
+    <div className="flex items-center space-x-2 text-sm">
+        <DollarSign className="w-4 h-4 text-gray-400" />
+        <div>
+            <span className="text-gray-500">จำนวนเงิน: </span>
+            <span className="font-medium text-black">{formatBudget(doc.totalBudget)}</span>
+        </div>
+    </div>
+    <div className="flex items-center space-x-2 text-sm">
+        <Building2 className="w-4 h-4 text-gray-400" />
+        <div>
+            <span className="text-gray-500">หน่วยงาน: </span>
+            <span className="font-medium text-black">{doc.department}</span>
+        </div>
+    </div>
+</div>
+
 
                         {/* Approval Info */}
                         {(doc.approver || doc.rejectionReason) && (
@@ -198,7 +199,7 @@ export default function TrackingList({ documents }: TrackingListProps) {
                                 {doc.approver && (
                                     <div className="flex items-center space-x-2 text-sm mb-2">
                                         <span className="text-gray-500">ผู้อนุมัติ: </span>
-                                        <span className="font-medium">{doc.approver}</span>
+                                        <span className="font-medium text-black">{doc.approver}</span>
                                         {doc.approvedDate && (
                                             <>
                                                 <span className="text-gray-300">•</span>
