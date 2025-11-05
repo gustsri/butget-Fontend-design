@@ -90,9 +90,9 @@ export default function DisbursementDetailPage() {
                         <h1 className="text-xl font-bold">{document.title}</h1>
                         <p className="text-sm">{document.description}</p>
                         <p className="mt-2">
-                            งบที่ได้รับ: {formatBudget(document.allocatedBudget)} | 
+                            
                             ขอเบิก: {formatBudget(document.totalBudget)} | 
-                            คงเหลือ: {formatBudget(remainingBudget)}
+                            
                         </p>
                     </div>
 
@@ -169,15 +169,15 @@ export default function DisbursementDetailPage() {
                 ป้ายไวนิลประชาสัมพันธ์ ขนาด 2.75 × 3.7 เมตร
               </td>
               <td className="border px-2 py-1 text-center">1 หน่วย</td>
-              <td className="border px-2 py-1 text-right">300.00</td>
-              <td className="border px-2 py-1 text-right">300.00</td>
+              <td className="border px-2 py-1 text-right">3000.00</td>
+              <td className="border px-2 py-1 text-right">3000.00</td>
               <td className="border px-2 py-1 text-center">-</td>
             </tr>
             <tr className="bg-gray-50 font-semibold">
               <td colSpan={4} className="border px-2 py-1 text-right">
                 รวมเป็นเงินทั้งหมด
               </td>
-              <td className="border px-2 py-1 text-right">300.00</td>
+              <td className="border px-2 py-1 text-right">3000.00</td>
               <td className="border px-2 py-1"></td>
             </tr>
           </tbody>

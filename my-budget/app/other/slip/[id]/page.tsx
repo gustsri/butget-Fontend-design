@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/shared/Sidebar";
 
-// ✅ FileSender Component
+// ✅ FileSender Component (เหมือนเดิม)
 function FileSender() {
   const [files, setFiles] = useState<any[]>([]);
   const [recipients, setRecipients] = useState<string[]>([]);
@@ -38,11 +38,8 @@ function FileSender() {
   const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -302,6 +299,8 @@ function FileSender() {
 
 // ✅ Main Page Component
 export default function Disbursement() {
+  const [type, setType] = useState("โครงการ");
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -311,16 +310,25 @@ export default function Disbursement() {
             คำขอเบิกจ่ายค่าไวนิล
           </h1>
 
+          {/* ✅ เลือกประเภท */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+            <label className="font-semibold block mb-2">ประเภทเอกสาร</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="โครงการ">โครงการ</option>
+              <option value="การขอเบิก">การขอเบิก</option>
+            </select>
+            
+          </div>
+
           {/* ✅ Budget Summary Section */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <h2 className="font-semibold text-lg mb-2">
               การเบิกจ่ายงบประมาณสำหรับโครงการประจำไตรมาสที่ 2
             </h2>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>งบที่ได้รับ: <span className="font-medium text-green-700">฿100,000</span></div>
-              <div>ขอเบิก: <span className="font-medium text-blue-700">฿3,000</span></div>
-              <div>คงเหลือ: <span className="font-medium text-gray-700">฿97,000</span></div>
-            </div>
           </div>
 
           <FileSender />
