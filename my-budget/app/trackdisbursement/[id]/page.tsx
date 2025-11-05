@@ -1,13 +1,7 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-  FileText,
-  ArrowLeft,
-  Paperclip,
-  CheckCircle,
-  XCircle,
-} from "lucide-react";
+import { FileText, ArrowLeft, Paperclip, CheckCircle, XCircle } from "lucide-react";
 import Sidebar from "@/components/shared/Sidebar";
 
 // mock data
@@ -25,29 +19,31 @@ export default function DisbursementDetail() {
   const router = useRouter();
   const detail = disbursementDetails[id as string];
 
-  // ✅ state สำหรับ modal และข้อมูลการคำนวณ
-  const [showModal, setShowModal] = useState(false);
-  const [inputAmount, setInputAmount] = useState<number | "">("");
+  const [usedAmount, setUsedAmount] = useState<number | "">("");
   const [resultMessage, setResultMessage] = useState<string>("");
+  const [approvalStatus, setApprovalStatus] = useState<"approved" | "rejected" | "">("");
 
   if (!detail) {
     return <p className="p-6 text-black">ไม่พบข้อมูล</p>;
   }
 
-  // ✅ ฟังก์ชันคำนวณผลต่าง
-  const handleApprove = () => {
-    if (inputAmount === "") {
-      setResultMessage("กรุณากรอกจำนวนเงินก่อนดำเนินการ");
+  // ✅ ฟังก์ชันคำนวณทันทีเมื่อมีการกรอก
+  const handleInputChange = (value: string) => {
+    if (value === "") {
+      setUsedAmount("");
+      setResultMessage("");
       return;
     }
 
-    const approvedAmount = Number(inputAmount);
+    const used = Number(value);
     const budget = detail.amount;
-    const diff = approvedAmount - budget;
+    const diff = used - budget;
+
+    setUsedAmount(used);
 
     if (diff > 0) {
       setResultMessage(
-        `ยอดเงินเกินงบประมาณ ${diff.toLocaleString()} บาท ✅ ส่งให้เจ้าหน้าที่แผนปรับแก้`
+        `ยอดเงินเกินงบประมาณ ${diff.toLocaleString()} บาท 💸 ส่งให้เจ้าหน้าที่แผนปรับแก้`
       );
     } else if (diff < 0) {
       setResultMessage(
@@ -83,7 +79,8 @@ export default function DisbursementDetail() {
               <strong>วันที่:</strong> {detail.date}
             </p>
             <p>
-              <strong>จำนวนเงิน:</strong> {detail.amount.toLocaleString()} บาท
+              <strong>งบประมาณที่ได้รับ:</strong>{" "}
+              {detail.amount.toLocaleString()} บาท
             </p>
 
             <div>
@@ -95,6 +92,33 @@ export default function DisbursementDetail() {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            {/* ✅ ช่องกรอกจำนวนเงินที่ใช้จริง */}
+            <div className="mt-6">
+              <label className="block text-sm font-semibold mb-1">
+                จำนวนเงินที่ใช้จริง (บาท)
+              </label>
+              <input
+                type="number"
+                value={usedAmount}
+                onChange={(e) => handleInputChange(e.target.value)}
+                className="w-full border px-3 py-2 rounded-lg text-black"
+                placeholder="เช่น 2800"
+              />
+
+              {/* แสดงผลคำนวณ */}
+              {resultMessage && (
+                <p
+                  className={`mt-3 text-sm font-semibold text-center ${
+                    resultMessage.includes("เกินงบ")
+                      ? "text-red-600"
+                      : "text-green-700"
+                  }`}
+                >
+                  {resultMessage}
+                </p>
+              )}
             </div>
           </div>
 
@@ -120,7 +144,8 @@ export default function DisbursementDetail() {
                 คณบดีคณะเทคโนโลยีสารสนเทศ
               </p>
               <p>
-                <span className="font-semibold">ข้าพเจ้า:</span> นาย A สังกัดงานประชาสัมพันธ์
+                <span className="font-semibold">ข้าพเจ้า:</span>{" "}
+                นาย A สังกัดงานประชาสัมพันธ์
               </p>
               <p>
                 <span className="font-semibold">เหตุผล:</span>{" "}
@@ -166,65 +191,33 @@ export default function DisbursementDetail() {
           </div>
         </div>
 
-        {/* 🔹 ปุ่มอนุมัติ/ไม่อนุมัติ */}
-        <div className="flex justify-center gap-4 mt-6">
+        {/* ✅ ปุ่มอนุมัติ / ไม่อนุมัติ */}
+        <div className="mt-6 flex justify-center gap-6">
           <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+            onClick={() => setApprovalStatus("approved")}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow"
           >
-            <CheckCircle className="w-4 h-4" /> อนุมัติ
+            <CheckCircle className="w-5 h-5" /> อนุมัติ
           </button>
-          <button className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
-            <XCircle className="w-4 h-4" /> ไม่อนุมัติ
+          <button
+            onClick={() => setApprovalStatus("rejected")}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg shadow"
+          >
+            <XCircle className="w-5 h-5" /> ไม่อนุมัติ
           </button>
         </div>
 
-        {/* ✅ Modal กรอกจำนวนเงิน */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-              <h2 className="text-lg font-bold mb-4 text-center">
-                อนุมัติการเบิกจ่าย
-              </h2>
-
-              <label className="block mb-2 text-sm">
-                กรอกจำนวนเงินที่อนุมัติ (บาท)
-              </label>
-              <input
-                type="number"
-                value={inputAmount}
-                onChange={(e) => setInputAmount(Number(e.target.value))}
-                className="w-full border px-3 py-2 rounded-lg mb-4"
-                placeholder="เช่น 3000"
-              />
-
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={handleApprove}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                >
-                  คำนวณ
-                </button>
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setInputAmount("");
-                    setResultMessage("");
-                  }}
-                  className="bg-gray-300 text-black px-4 py-2 rounded-lg hover:bg-gray-400"
-                >
-                  ปิด
-                </button>
-              </div>
-
-              {/* แสดงผลลัพธ์ */}
-              {resultMessage && (
-                <p className="mt-4 text-center text-sm font-semibold text-blue-700">
-                  {resultMessage}
-                </p>
-              )}
-            </div>
-          </div>
+        {/* ✅ แสดงสถานะหลังคลิก */}
+        {approvalStatus && (
+          <p
+            className={`mt-4 text-center font-semibold ${
+              approvalStatus === "approved" ? "text-green-700" : "text-red-700"
+            }`}
+          >
+            {approvalStatus === "approved"
+              ? "✅ เอกสารนี้ได้รับการอนุมัติแล้ว"
+              : "❌ เอกสารนี้ไม่ผ่านการอนุมัติ"}
+          </p>
         )}
       </main>
     </div>
