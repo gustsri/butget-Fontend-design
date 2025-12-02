@@ -1,120 +1,64 @@
-import React, { useState, useRef, useEffect } from 'react';
+"use client";
+
+import { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
+// เราจะสร้าง server action เล็กๆ ไว้ดึงปี หรือดึงผ่าน API ก็ได้
+// ในที่นี้สมมติว่าคุณสร้าง action getBudgetYears ไว้ใน actions.ts ของหน้านี้หรือไฟล์กลาง
+import { getBudgetYears } from "@/app/planning/student-enroll/actions"; 
 
 interface YearDropdownProps {
-  selectedYear?: number | "ทั้งหมด";
-  onYearChange?: (year: number | "ทั้งหมด") => void;
-  startYear?: number;
-  endYear?: number;
-  placeholder?: string;
-  className?: string;
-  buttonClassName?: string;
-  disabled?: boolean;
+  onYearChange: (yearId: number) => void;
 }
 
-const YearDropdown: React.FC<YearDropdownProps> = ({
-  selectedYear,
-  onYearChange = () => {},
-  startYear = 2563,
-  endYear = new Date().getFullYear() + 543 + 5,
-  placeholder = "เลือกปี พ.ศ.",
-  className = "",
-  buttonClassName = "",
-  disabled = false
-}) => {
+export default function YearDropdown({ onYearChange }: YearDropdownProps) {
+  const [years, setYears] = useState<{ id: number; year: number }[]>([]);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Generate array of years (Buddhist Era)
-  const years = Array.from(
-    { length: endYear - startYear + 1 },
-    (_, index) => startYear + index
-  ).reverse();
-
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+    async function fetchYears() {
+      const data = await getBudgetYears();
+      if (data.length > 0) {
+        setYears(data);
+        // เลือกปีล่าสุดเป็นค่าเริ่มต้น
+        setSelectedYear(data[0].year);
+        onYearChange(data[0].id);
       }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+    fetchYears();
   }, []);
 
-  const toggleDropdown = () => {
-    if (!disabled) setIsOpen(!isOpen);
-  };
-
-  const handleYearSelect = (year: number | "ทั้งหมด") => {
-    onYearChange(year);
+  const handleSelect = (id: number, year: number) => {
+    setSelectedYear(year);
+    onYearChange(id); // ส่ง ID กลับไปให้หน้าหลัก
     setIsOpen(false);
   };
 
   return (
-    <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>
-      {/* ปุ่ม dropdown */}
+    <div className="relative">
       <button
-        onClick={toggleDropdown}
-        disabled={disabled}
-        className={`
-          inline-flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-          ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-          ${buttonClassName}
-        `}
-        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20 backdrop-blur-sm"
       >
-        <span>
-          {selectedYear
-            ? selectedYear === "ทั้งหมด"
-              ? "ทั้งหมด"
-              : `ปี พ.ศ. ${selectedYear}`
-            : placeholder}
+        <span className="text-sm font-medium">
+          ปีงบประมาณ: {selectedYear ? selectedYear : "กำลังโหลด..."}
         </span>
-        <svg
-          className={`w-4 h-4 ml-2 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className="w-4 h-4" />
       </button>
 
-      {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          <ul className="py-1">
-            {/* ✅ ตัวเลือก "ทั้งหมด" */}
-            <li>
-              <button
-                onClick={() => handleYearSelect("ทั้งหมด")}
-                className={`
-                  w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-blue-700
-                  ${selectedYear === "ทั้งหมด" ? "bg-blue-100 text-blue-700 font-medium" : "text-gray-700"}
-                `}
-              >
-                ทั้งหมด
-              </button>
-            </li>
-            {/* ตัวเลือกปี */}
-            {years.map((year) => (
-              <li key={year}>
-                <button
-                  onClick={() => handleYearSelect(year)}
-                  className={`
-                    w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-blue-700
-                    ${selectedYear === year ? "bg-blue-100 text-blue-700 font-medium" : "text-gray-700"}
-                  `}
-                >
-                  ปี พ.ศ. {year}
-                </button>
-              </li>
-            ))}
-          </ul>
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 py-1 text-gray-800 border border-gray-100">
+          {years.map((y) => (
+            <button
+              key={y.id}
+              onClick={() => handleSelect(y.id, y.year)}
+              className="block w-full text-left px-4 py-2 hover:bg-blue-50 text-sm hover:text-blue-700"
+            >
+              {y.year}
+            </button>
+          ))}
         </div>
       )}
     </div>
   );
-};
-
-export default YearDropdown;
+}

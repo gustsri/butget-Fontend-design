@@ -9,7 +9,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Enum ตามที่คุณระบุ ---
+// --- Enums ---
 enum DegreeLevel {
   bachelor
   bachelor_master
@@ -22,7 +22,28 @@ enum ProgramType {
   international
 }
 
-// --- ตารางหลักสูตร ---
+enum PlanType {
+  plan
+  actual
+}
+
+// --- 1. ตารางปีงบประมาณรายรับ (เพิ่มใหม่) ---
+model RevenueBudget {
+  revenue_budget_id Int      @id @default(autoincrement())
+  budget_year       Int      @unique // ปีงบประมาณ (เช่น 2567) ห้ามซ้ำ
+  amount            Decimal  @default(0) @db.Decimal(15, 2) // ยอดรวมงบ (เผื่อใช้)
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  // Relation: 1 ปีงบ มีค่าเทอมและนักศึกษาหลายรายการ
+  student_fees          StudentFee[]
+  enrollment_info       EnrollmentInformation[]
+
+  @@map("revenue_budgets")
+}
+
+// --- 2. ตารางหลักสูตร ---
 model AcademicProgram {
   academic_program_id Int         @id @default(autoincrement())
   program_name        String      @db.VarChar(255)
@@ -32,23 +53,56 @@ model AcademicProgram {
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
 
-  // Relation: 1 หลักสูตร มีค่าธรรมเนียมได้หลายรายการ (หรือ 1 รายการต่อปีงบ)
-  student_fees        StudentFee[] 
+  // Relation
+  student_fees          StudentFee[] 
+  EnrollmentInformation EnrollmentInformation[]
 
-  @@map("academic_programs") // map ชื่อ model ให้ตรงกับชื่อ table จริงใน DB
+  @@map("academic_programs") 
 }
 
-// --- ตารางค่าธรรมเนียม ---
+// --- 3. ตารางค่าธรรมเนียม ---
 model StudentFee {
   student_fee_id       Int      @id @default(autoincrement())
   academic_program_id  Int
-  revenue_budget_id    Int      // FK ไปยังตารางงบประมาณ (ถ้ามี)
+  revenue_budget_id    Int      
   tuition_per_semester Decimal  @db.Decimal(12, 2)
   is_active            Boolean  @default(true)
   created_at           DateTime @default(now())
 
   // Relation
   program              AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
+  budget               RevenueBudget   @relation(fields: [revenue_budget_id], references: [revenue_budget_id])
 
   @@map("student_fees")
+}
+
+// --- 4. ตารางจำนวนนักศึกษา ---
+model EnrollmentInformation {
+  enrollment_id       Int      @id @default(autoincrement())
+  
+  academic_program_id Int
+  revenue_budget_id   Int      
+  
+  academic_year       Int      
+  semester            Int      
+  
+  plan_type           PlanType
+  
+  year1_count         Int      @default(0)
+  year2_count         Int      @default(0)
+  year3_count         Int      @default(0)
+  year4_count         Int      @default(0)
+  year5_count         Int      @default(0)
+  year6_count         Int      @default(0)
+  graduates           Int      @default(0) 
+
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  // Relation
+  program             AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
+  budget              RevenueBudget   @relation(fields: [revenue_budget_id], references: [revenue_budget_id])
+  
+  @@map("enrollment_information")
+  @@unique([academic_program_id, revenue_budget_id, plan_type, academic_year, semester])
 }

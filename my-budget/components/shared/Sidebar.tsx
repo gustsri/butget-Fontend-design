@@ -19,7 +19,7 @@ const Sidebar: React.FC = () => {
       <p className="text-xs text-gray-400 mb-2 uppercase">จัดทำแผนงบประมาณ</p>
       <ul className="space-y-1 pl-1">
         <li>
-          <Link href="/planning/students" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+          <Link href="/planning/student-enroll" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
               strokeWidth="2" stroke="currentColor"
               className="w-5 h-5 mr-3 flex-shrink-0 text-gray-700">
