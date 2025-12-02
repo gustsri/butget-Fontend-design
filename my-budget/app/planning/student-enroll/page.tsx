@@ -69,15 +69,29 @@ export default function EnrollmentPage() {
   const toggleDegree = (degree: string) => setOpenDegrees(prev => ({ ...prev, [degree]: !(prev[degree] ?? true) }));
   const toggleDept = (dept: string) => setOpenDepts(prev => ({ ...prev, [dept]: !(prev[dept] ?? true) }));
 
-  // --- Logic การแก้ไข (ยังไม่ Save ลง DB) ---
   const handleEdit = (id: number, field: string, value: number, planType: "plan" | "actual") => {
-    // 1. อัปเดตหน้าจอทันที (Local State)
+    // 1. Optimistic Update: แก้ไขค่า และคำนวณผลรวมใหม่ทันที
     setData((prev) =>
-      prev.map((row) =>
-        (row.id === id && row.planType === planType)
-          ? { ...row, [field]: Number(value) }
-          : row
-      )
+      prev.map((row) => {
+        // เช็คว่าเป็นแถวที่เรากำลังแก้หรือไม่
+        if (row.id === id && row.planType === planType) {
+
+          // สร้าง Object ใหม่ที่มีค่าที่แก้ไขแล้ว
+          const updatedRow = { ...row, [field]: Number(value) };
+
+          // 🔥 จุดที่เพิ่ม: คำนวณ Total ใหม่จากค่าใน updatedRow
+          updatedRow.total =
+            (updatedRow.year1 || 0) +
+            (updatedRow.year2 || 0) +
+            (updatedRow.year3 || 0) +
+            (updatedRow.year4 || 0) +
+            (updatedRow.year5 || 0) +
+            (updatedRow.year6 || 0);
+
+          return updatedRow;
+        }
+        return row;
+      })
     );
 
     // 2. เก็บเข้า Pending Changes
@@ -135,7 +149,7 @@ export default function EnrollmentPage() {
       <Sidebar />
       <main className="flex-1 ml-64 p-6">
         <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden min-h-[80vh]">
-          
+
           {/* Header */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
             <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 flex justify-between items-center">
@@ -148,7 +162,7 @@ export default function EnrollmentPage() {
               <div>
                 <h2 className="text-xl font-bold text-white">บันทึกจำนวนนักศึกษา</h2>
                 <h1 className="text-blue-200 text-l mt-1">
-                    {selectedYear ? "ข้อมูลประจำปีงบประมาณที่เลือก" : "กรุณาเลือกปีงบประมาณ"}
+                  {selectedYear ? "ข้อมูลประจำปีงบประมาณที่เลือก" : "กรุณาเลือกปีงบประมาณ"}
                 </h1>
               </div>
 
@@ -156,17 +170,15 @@ export default function EnrollmentPage() {
               <div className="bg-blue-900/30 p-1 rounded-lg flex items-center gap-1 border border-blue-400/30">
                 <button
                   onClick={() => setEditableCategory("plan")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    editableCategory === "plan" ? "bg-white text-blue-900 shadow-sm" : "text-blue-100 hover:bg-white/10"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${editableCategory === "plan" ? "bg-white text-blue-900 shadow-sm" : "text-blue-100 hover:bg-white/10"
+                    }`}
                 >
                   <FileText className="w-4 h-4" /> แผน (Plan)
                 </button>
                 <button
                   onClick={() => setEditableCategory("actual")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    editableCategory === "actual" ? "bg-white text-blue-900 shadow-sm" : "text-blue-100 hover:bg-white/10"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${editableCategory === "actual" ? "bg-white text-blue-900 shadow-sm" : "text-blue-100 hover:bg-white/10"
+                    }`}
                 >
                   <ClipboardList className="w-4 h-4" /> จริง (Actual)
                 </button>
@@ -204,8 +216,8 @@ export default function EnrollmentPage() {
                                 key={`${item.id}-${item.planType}`}
                                 category={
                                   <div className="flex items-center gap-2">
-                                    {item.planType === 'plan' 
-                                      ? <><FileText className="w-4 h-4 text-blue-500" /> แผน (Plan)</> 
+                                    {item.planType === 'plan'
+                                      ? <><FileText className="w-4 h-4 text-blue-500" /> แผน (Plan)</>
                                       : <><ClipboardList className="w-4 h-4 text-orange-500" /> จริง (Actual)</>
                                     }
                                   </div>
@@ -214,10 +226,10 @@ export default function EnrollmentPage() {
                                 year4={item.year4} year5={item.year5} year6={item.year6}
                                 total={item.total}
                                 highlight={item.planType} // สำหรับสีพื้นหลัง
-                                
+
                                 // ✅ Logic ควบคุมการแก้ไข: แก้ได้เฉพาะที่ตรงกับ Toggle ที่เลือก
                                 editable={item.planType === editableCategory}
-                                
+
                                 onEdit={(field: any, value: any) => handleEdit(item.id, field, value, item.planType)}
                               />
                             ))}
@@ -236,27 +248,27 @@ export default function EnrollmentPage() {
       {hasChanges && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-6 z-50 border border-gray-700 animate-slide-up">
           <div className="flex items-center gap-3">
-             <div className="bg-yellow-500/20 p-2 rounded-full">
-                <AlertCircle className="w-5 h-5 text-yellow-400" />
-             </div>
-             <div>
-               <p className="font-bold text-sm">มีการแก้ไขข้อมูลที่ยังไม่บันทึก</p>
-               <p className="text-xs text-gray-400">จำนวน {Object.keys(pendingChanges).length} รายการ</p>
-             </div>
+            <div className="bg-yellow-500/20 p-2 rounded-full">
+              <AlertCircle className="w-5 h-5 text-yellow-400" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">มีการแก้ไขข้อมูลที่ยังไม่บันทึก</p>
+              <p className="text-xs text-gray-400">จำนวน {Object.keys(pendingChanges).length} รายการ</p>
+            </div>
           </div>
           <div className="h-8 w-px bg-gray-700"></div>
           <div className="flex gap-2">
-            <button 
-                onClick={() => { setPendingChanges({}); fetchData(); }} // ยกเลิก = โหลดข้อมูลเดิมทับ
-                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 text-gray-300 transition"
+            <button
+              onClick={() => { setPendingChanges({}); fetchData(); }} // ยกเลิก = โหลดข้อมูลเดิมทับ
+              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 text-gray-300 transition"
             >
-                ยกเลิก
+              ยกเลิก
             </button>
-            <button 
-                onClick={handleSaveAll}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/50 flex items-center gap-2 transition transform hover:scale-105 active:scale-95"
+            <button
+              onClick={handleSaveAll}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/50 flex items-center gap-2 transition transform hover:scale-105 active:scale-95"
             >
-                <Save className="w-4 h-4" /> บันทึกการเปลี่ยนแปลง
+              <Save className="w-4 h-4" /> บันทึกการเปลี่ยนแปลง
             </button>
           </div>
         </div>
