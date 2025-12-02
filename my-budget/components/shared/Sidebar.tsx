@@ -79,12 +79,12 @@ const Sidebar: React.FC = () => {
           </Link>
         </li>
 
-        {/* <li>
-          <Link href="/planning/appprovedisbursemnet" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+        <li>
+          <Link href="/planning/tuition-fees" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
             <img src="/img/icon/document-signed.svg" alt="" className="w-5 h-5 mr-3 flex-shrink-0" />
-            <span>ส่งเอกสารใบเสร็จ</span>
+            <span>tuition-fees</span>
           </Link>
-        </li> */}
+        </li>
       </ul>
 
       {/* ======================== */}

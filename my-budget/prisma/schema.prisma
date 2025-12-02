@@ -1,0 +1,54 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enum ตามที่คุณระบุ ---
+enum DegreeLevel {
+  bachelor
+  bachelor_master
+  master
+  phd
+}
+
+enum ProgramType {
+  normal
+  international
+}
+
+// --- ตารางหลักสูตร ---
+model AcademicProgram {
+  academic_program_id Int         @id @default(autoincrement())
+  program_name        String      @db.VarChar(255)
+  degree_level        DegreeLevel
+  program_type        ProgramType
+  is_active           Boolean     @default(true)
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+
+  // Relation: 1 หลักสูตร มีค่าธรรมเนียมได้หลายรายการ (หรือ 1 รายการต่อปีงบ)
+  student_fees        StudentFee[] 
+
+  @@map("academic_programs") // map ชื่อ model ให้ตรงกับชื่อ table จริงใน DB
+}
+
+// --- ตารางค่าธรรมเนียม ---
+model StudentFee {
+  student_fee_id       Int      @id @default(autoincrement())
+  academic_program_id  Int
+  revenue_budget_id    Int      // FK ไปยังตารางงบประมาณ (ถ้ามี)
+  tuition_per_semester Decimal  @db.Decimal(12, 2)
+  is_active            Boolean  @default(true)
+  created_at           DateTime @default(now())
+
+  // Relation
+  program              AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
+
+  @@map("student_fees")
+}
