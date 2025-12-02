@@ -95,7 +95,7 @@ export default function RevenuePage() {
           </div>
 
           {/* Revenue Table */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-black-200">
             {yearData?.sections.map((section, sIdx) => (
               <div key={sIdx}>
                 <RowItem label={section.title} type="head" />

@@ -148,7 +148,7 @@ export default function TrackingPage() {
                                         placeholder="ค้นหาเอกสาร..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="text-black w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
 
@@ -156,7 +156,7 @@ export default function TrackingPage() {
                                 <select
                                     value={selectedStatus}
                                     onChange={(e) => setSelectedStatus(e.target.value)}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
                                     <option value="all">ทุกสถานะ</option>
                                     <option value="pending">รอดำเนินการ</option>
@@ -169,7 +169,7 @@ export default function TrackingPage() {
                                 <select
                                     value={selectedType}
                                     onChange={(e) => setSelectedType(e.target.value)}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
                                     <option value="all">ทุกประเภท</option>
                                     <option value="budget_plan">แผนงบประมาณ</option>
