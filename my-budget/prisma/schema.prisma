@@ -55,7 +55,6 @@ model RevenueBudget {
 
   // Relations
   sections          RevenueSection[] 
-  student_fees      StudentFee[]
   enrollment_info   EnrollmentInformation[]
 
   @@map("revenue_budgets")
@@ -115,15 +114,13 @@ model AcademicProgram {
 
 model StudentFee {
   student_fee_id       Int      @id @default(autoincrement())
-  academic_program_id  Int
-  revenue_budget_id    Int      
+  academic_program_id  Int   
   tuition_per_semester Decimal  @db.Decimal(12, 2)
   is_active            Boolean  @default(true)
   created_at           DateTime @default(now())
 
   // Relations
   program              AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
-  budget               RevenueBudget   @relation(fields: [revenue_budget_id], references: [revenue_budget_id])
 
   @@map("student_fees")
 }

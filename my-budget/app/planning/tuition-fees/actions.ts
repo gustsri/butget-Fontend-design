@@ -3,13 +3,15 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// ฟังก์ชันดึงข้อมูล (เหมือนเดิม)
+// ==========================================
+// 1. Fetch Data
+// ==========================================
 export async function getProgramsWithFees() {
   const programs = await prisma.academicProgram.findMany({
     include: {
       student_fees: {
         where: { is_active: true },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: 'desc' }, // เอาค่าเทอมล่าสุดที่ Active
         take: 1
       }
     },
@@ -23,43 +25,43 @@ export async function getProgramsWithFees() {
     program_type: p.program_type,
     is_active: p.is_active,
     student_fee_id: p.student_fees[0]?.student_fee_id || null,
-    tuition_per_semester: p.student_fees[0]?.tuition_per_semester.toNumber() || null
+    tuition_per_semester: p.student_fees[0]?.tuition_per_semester.toNumber() || 0
   }));
 }
 
-// ✅ ฟังก์ชันอัปเดตข้อมูล (ชื่อใหม่ที่ page.tsx เรียกหา)
+// ==========================================
+// 2. Update Data (แก้ไข)
+// ==========================================
 export async function updateProgramDetails(programId: number, amount: number, isActive: boolean) {
   try {
-    // 1. อัปเดตสถานะ Active/Inactive ที่ตารางแม่ (AcademicProgram)
+    // 1. อัปเดตสถานะ Master Data
     await prisma.academicProgram.update({
       where: { academic_program_id: programId },
       data: { is_active: isActive },
     });
 
-    // 2. อัปเดตราคาค่าเทอม ที่ตารางลูก (StudentFee)
+    // 2. อัปเดตราคา (Standard Price)
     const existingFee = await prisma.studentFee.findFirst({
       where: { academic_program_id: programId, is_active: true },
     });
 
     if (existingFee) {
-      // ถ้ามีอยู่แล้ว -> Update ราคา
+      // Update เดิม
       await prisma.studentFee.update({
         where: { student_fee_id: existingFee.student_fee_id },
         data: { tuition_per_semester: amount },
       });
     } else {
-      // ถ้าไม่มี -> Create ใหม่
+      // Create ใหม่ (ถ้ายังไม่เคยมี)
       await prisma.studentFee.create({
         data: {
           academic_program_id: programId,
           tuition_per_semester: amount,
-          revenue_budget_id: 1, // ⚠️ อย่าลืมเช็คว่า ID 1 มีจริงในตาราง revenue_budgets
           is_active: true,
         },
       });
     }
 
-    // สั่ง Refresh หน้าเว็บ
     revalidatePath("/planning/tuition-fees"); 
     return { success: true };
     
@@ -67,4 +69,45 @@ export async function updateProgramDetails(programId: number, amount: number, is
     console.error("Update Error:", error);
     return { success: false, error: "Failed to update details" };
   }
+}
+
+// ==========================================
+// 3. Create Data (สร้างใหม่)
+// ==========================================
+type CreateProgramInput = {
+    program_name: string;
+    degree_level: "bachelor" | "bachelor_master" | "master" | "phd";
+    program_type: "normal" | "international";
+    tuition_per_semester: number;
+};
+
+export async function createProgram(data: CreateProgramInput) {
+    try {
+        // 1. สร้างหลักสูตร
+        const newProgram = await prisma.academicProgram.create({
+            data: {
+                program_name: data.program_name,
+                degree_level: data.degree_level,
+                program_type: data.program_type,
+                is_active: true,
+            }
+        });
+
+        // 2. สร้างค่าเทอมมาตรฐาน (Standard Fee) ทันที
+        // ไม่ต้องสนใจ Budget ID แล้ว
+        await prisma.studentFee.create({
+            data: {
+                academic_program_id: newProgram.academic_program_id,
+                tuition_per_semester: data.tuition_per_semester,
+                is_active: true
+            }
+        });
+
+        revalidatePath("/planning/tuition-fees");
+        return { success: true };
+
+    } catch (error) {
+        console.error("Create Error:", error);
+        return { success: false, error: "Failed to create program" };
+    }
 }

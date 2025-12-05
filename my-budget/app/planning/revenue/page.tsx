@@ -4,10 +4,9 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import YearDropdown from "@/components/shared/year";
 import RowItem from "@/components/plan/RowItem";
-import { Loader2, Coins, TrendingDown, Wallet, Plus, Save, FileText, CheckCircle, Send, AlertCircle, RotateCcw } from "lucide-react";
-import { getRevenueData, createRevenuePlan, updateBudgetStatus, bulkUpdateRevenueItems } from "./actions";
+import { Loader2, Coins, TrendingDown, Wallet, Plus, Save, FileText, CheckCircle, Send, AlertCircle, RotateCcw, RefreshCw } from "lucide-react";
+import { getRevenueData, createRevenuePlan, updateBudgetStatus, bulkUpdateRevenueItems, recalculateRevenueFromEnrollment } from "./actions";
 
-// Type Definition
 type RevenueData = {
   revenue_budget_id: number;
   budget_year: number;
@@ -28,23 +27,19 @@ type RevenueData = {
 
 export default function RevenuePage() {
   const [data, setData] = useState<RevenueData | null>(null);
-  const [originalData, setOriginalData] = useState<RevenueData | null>(null); // เก็บค่าเดิมไว้เปรียบเทียบ
+  const [originalData, setOriginalData] = useState<RevenueData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   
-  // State สำหรับปีที่เลือก
   const [currentYearVal, setCurrentYearVal] = useState<number>(0);
   const [currentId, setCurrentId] = useState<number | null>(null);
 
-  // State เก็บรายการที่ถูกแก้ไข (Pending Changes)
-  const [hasChanges, setHasChanges] = useState(false);
-
-  // 1. จัดการการเลือกปีจาก Dropdown
+  // 1. จัดการการเลือกปี
   const handleYearChange = (id: number | null, year: number) => {
     setCurrentId(id);
     setCurrentYearVal(year);
-    
-    // เคลียร์สถานะการแก้ไขเมื่อเปลี่ยนปี
     setHasChanges(false); 
     
     if (id) {
@@ -55,13 +50,12 @@ export default function RevenuePage() {
     }
   };
 
-  // ฟังก์ชันดึงข้อมูล
   const fetchData = async (id: number) => {
     setIsLoading(true);
     try {
       const result = await getRevenueData(id);
       setData(result as any);
-      setOriginalData(JSON.parse(JSON.stringify(result))); // Deep Clone เก็บค่าตั้งต้น
+      setOriginalData(JSON.parse(JSON.stringify(result)));
       setHasChanges(false);
     } catch (error) {
       console.error(error);
@@ -70,7 +64,7 @@ export default function RevenuePage() {
     }
   };
 
-  // 2. ฟังก์ชันสร้างแผนใหม่
+  // 2. สร้างแผนใหม่
   const handleCreatePlan = async () => {
     if (!confirm(`ยืนยันการสร้างแผนงบประมาณปี ${currentYearVal}?`)) return;
     
@@ -88,7 +82,7 @@ export default function RevenuePage() {
     }
   };
 
-  // 3. ฟังก์ชันแก้ไขตัวเลข (แก้ไข Local State เท่านั้น ยังไม่ Save)
+  // 3. แก้ไขตัวเลข (Local State)
   const handleEdit = (itemId: number, newVal: number) => {
     if (!data) return;
 
@@ -102,7 +96,7 @@ export default function RevenuePage() {
       }))
     };
     
-    // คำนวณยอดรวมใหม่ (ในหน้าจอ) เพื่อให้เห็นผลลัพธ์ทันที
+    // คำนวณยอดรวมในหน้าจอทันที
     let tempTotal = 0;
     let tempDeduct = 0;
     newData.sections.forEach(sec => {
@@ -115,22 +109,18 @@ export default function RevenuePage() {
     newData.net_amount = tempTotal - tempDeduct;
 
     setData(newData);
-    setHasChanges(true); // เปิด flag ว่ามีการแก้ไข
+    setHasChanges(true);
   };
 
-  // 4. ✅ ฟังก์ชันกดบันทึก (Save Changes)
+  // 4. บันทึกข้อมูล (Batch Save)
   const handleSaveChanges = async () => {
     if (!data) return;
     setIsSaving(true);
 
     try {
-      // รวบรวมรายการที่เปลี่ยนไป
       const updates = [];
       for (const sec of data.sections) {
         for (const item of sec.items) {
-          // เปรียบเทียบกับ originalData หรือส่งไปทั้งหมดก็ได้ (เพื่อความชัวร์ส่งทั้งหมดในหน้านี้ง่ายกว่าสำหรับ case นี้)
-          // แต่เพื่อ performance ควรส่งเฉพาะที่เปลี่ยน
-          // ในที่นี้ส่งทั้งหมดง่ายสุดสำหรับการ demo แต่ถ้าข้อมูลเยอะควร diff
           updates.push({ itemId: item.item_id, amount: Number(item.amount) });
         }
       }
@@ -138,10 +128,8 @@ export default function RevenuePage() {
       const result = await bulkUpdateRevenueItems(updates, data.revenue_budget_id);
       
       if (result.success) {
-        // อัปเดต originalData ให้เป็นค่าล่าสุด
         setOriginalData(JSON.parse(JSON.stringify(data)));
         setHasChanges(false);
-        // alert("บันทึกข้อมูลเรียบร้อย ✅"); // ไม่ต้อง alert ก็ได้ ถ้าปุ่มเปลี่ยนสถานะกลับ
       } else {
         alert("บันทึกไม่สำเร็จ ❌");
       }
@@ -150,20 +138,37 @@ export default function RevenuePage() {
     }
   };
 
-  // 5. ฟังก์ชันยกเลิกการแก้ไข (Revert)
+  // 5. ยกเลิกการแก้ไข
   const handleCancelChanges = () => {
     if (!originalData) return;
-    if (confirm("คุณต้องการยกเลิกการแก้ไขทั้งหมด และกลับไปใช้ค่าล่าสุดที่บันทึกไว้?")) {
+    if (confirm("ยกเลิกการแก้ไขทั้งหมด?")) {
       setData(JSON.parse(JSON.stringify(originalData)));
       setHasChanges(false);
     }
   };
 
-  // 6. ฟังก์ชันเปลี่ยนสถานะ (Draft <-> Submitted)
+  // 6. คำนวณยอดใหม่จาก Enrollment
+  const handleRecalculate = async () => {
+    if (!data) return;
+    if (!confirm("ระบบจะดึงจำนวนนักศึกษาและค่าเทอมล่าสุดมาคำนวณใหม่ และทับข้อมูลเดิม ยืนยันหรือไม่?")) return;
+
+    setIsRecalculating(true);
+    try {
+      const result = await recalculateRevenueFromEnrollment(data.revenue_budget_id);
+      if (result.success) {
+        alert("คำนวณยอดเงินใหม่เรียบร้อย ✅");
+        fetchData(data.revenue_budget_id);
+      } else {
+        alert("เกิดข้อผิดพลาด: " + (result.message || "ไม่สามารถคำนวณได้"));
+      }
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
+  // 7. เปลี่ยนสถานะ
   const handleSaveStatus = async (status: "draft" | "submitted") => {
     if (!data) return;
-    
-    // ถ้ามีการแก้ไขค้างอยู่ ต้องบังคับบันทึกก่อน
     if (hasChanges) {
       alert("กรุณาบันทึกการแก้ไขตัวเลข (Save Changes) ก่อนเปลี่ยนสถานะ");
       return;
@@ -185,12 +190,12 @@ export default function RevenuePage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 pb-28"> {/* เพิ่ม padding ล่างเผื่อ Footer ลอย */}
+    <div className="flex min-h-screen bg-gray-50 pb-28">
       <Sidebar />
       <main className="flex-1 ml-64 p-6">
         <div className="max-w-5xl mx-auto">
           
-          {/* --- Header Area --- */}
+          {/* Header */}
           <div className="bg-white rounded-xl shadow-lg mb-6 relative z-20">
             <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 flex justify-between items-center rounded-t-xl">
               <div>
@@ -208,7 +213,19 @@ export default function RevenuePage() {
                    )}
                 </div>
               </div>
+              
               <div className="flex gap-3 relative">
+                 {data && data.status === 'draft' && (
+                   <button
+                     onClick={handleRecalculate}
+                     disabled={isRecalculating || hasChanges} // ห้ามกดถ้ามีการแก้ไขค้างอยู่
+                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/20 text-orange-100 hover:bg-orange-500/30 text-sm border border-orange-500/30 transition backdrop-blur-sm disabled:opacity-50"
+                     title="ดึงข้อมูลนักศึกษาล่าสุดมาคำนวณใหม่"
+                   >
+                     <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
+                     คำนวณยอดใหม่
+                   </button>
+                 )}
                  <YearDropdown onYearChange={handleYearChange} />
               </div>
             </div>
@@ -243,7 +260,7 @@ export default function RevenuePage() {
             )}
           </div>
 
-          {/* --- Content Area --- */}
+          {/* Content */}
           {isLoading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 text-blue-600 animate-spin" /></div>
           ) : !data ? (
@@ -283,11 +300,10 @@ export default function RevenuePage() {
                 </div>
               </div>
 
-              {/* ✅ Footer Actions Bar (ติดด้านล่างจอ) */}
+              {/* Footer Actions */}
               <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-2xl z-40 transition-transform duration-300 transform translate-y-0 ml-64">
                 <div className="max-w-5xl mx-auto flex justify-between items-center px-6">
                   
-                  {/* ฝั่งซ้าย: สถานะการแก้ไข */}
                   <div className="flex items-center gap-4">
                     {hasChanges ? (
                       <div className="flex items-center gap-2 text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 animate-pulse">
@@ -302,10 +318,7 @@ export default function RevenuePage() {
                     )}
                   </div>
 
-                  {/* ฝั่งขวา: ปุ่ม Action */}
                   <div className="flex gap-3">
-                    
-                    {/* ปุ่มยกเลิก/บันทึก (แสดงเมื่อมีการแก้ไข) */}
                     {hasChanges && (
                       <>
                         <button 
@@ -326,10 +339,8 @@ export default function RevenuePage() {
                       </>
                     )}
 
-                    {/* เส้นคั่น */}
                     <div className="w-px h-8 bg-gray-300 mx-2"></div>
 
-                    {/* ปุ่มเปลี่ยนสถานะ (แสดงเมื่อไม่มีการแก้ไขค้างอยู่) */}
                     {!hasChanges && data.status !== 'draft' && (
                       <button 
                         onClick={() => handleSaveStatus('draft')}

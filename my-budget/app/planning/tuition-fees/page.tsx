@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/shared/Sidebar";
-import YearDropdown from "@/components/shared/year";
-import { Edit, Save, BookOpen, Globe } from "lucide-react";
+import { Edit, Save, BookOpen, Globe, Plus, X } from "lucide-react";
+import { getProgramsWithFees, updateProgramDetails, createProgram } from "./actions";
 
-// เรียกใช้ action ตัวใหม่ updateProgramDetails
-import { getProgramsWithFees, updateProgramDetails } from "./actions";
-
+// Types
 type ProgramWithFee = {
     academic_program_id: number;
     program_name: string;
@@ -18,15 +16,25 @@ type ProgramWithFee = {
     tuition_per_semester?: number | null;
 };
 
+const initialCreateForm = {
+    program_name: "",
+    degree_level: "bachelor" as const,
+    program_type: "normal" as const,
+    tuition_per_semester: ""
+};
+
 export default function TuitionManagement() {
     const [programs, setPrograms] = useState<ProgramWithFee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // State สำหรับ Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState<"edit" | "create">("edit");
+    
+    // State
     const [editingItem, setEditingItem] = useState<ProgramWithFee | null>(null);
-    const [feeInput, setFeeInput] = useState<string>("");
-    const [statusInput, setStatusInput] = useState<boolean>(true); // ✅ เพิ่ม State สถานะใน Modal
+    const [editFeeInput, setEditFeeInput] = useState<string>("");
+    const [editStatusInput, setEditStatusInput] = useState<boolean>(true);
+    const [createForm, setCreateForm] = useState(initialCreateForm);
 
     useEffect(() => {
         fetchData();
@@ -40,40 +48,59 @@ export default function TuitionManagement() {
         finally { setIsLoading(false); }
     }
 
-    const normalPrograms = programs.filter(p => p.program_type === 'normal');
-    const interPrograms = programs.filter(p => p.program_type === 'international');
-
     const formatCurrency = (amount?: number | null) => {
-        if (amount === undefined || amount === null) return "-";
+        if (amount === undefined || amount === null) return "0.00 บาท";
         return new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(amount);
     };
 
-    // ✅ ตอนกดแก้ไข: โหลดทั้ง "ราคา" และ "สถานะ" ปัจจุบันมาใส่ใน Modal
     const handleEditClick = (item: ProgramWithFee) => {
+        setModalMode("edit");
         setEditingItem(item);
-        setFeeInput(item.tuition_per_semester?.toString() || "");
-        setStatusInput(item.is_active); // Set สถานะเริ่มต้น
+        setEditFeeInput(item.tuition_per_semester?.toString() || "");
+        setEditStatusInput(item.is_active);
         setIsModalOpen(true);
     };
 
-    // ✅ ตอนกดบันทึก: ส่งทั้ง 2 ค่าไป Server Action
+    const handleCreateClick = () => {
+        setModalMode("create");
+        setCreateForm(initialCreateForm);
+        setIsModalOpen(true);
+    }
+
     const handleSave = async () => {
-        if (!editingItem) return;
-        const newFee = parseFloat(feeInput);
-
-        // เรียก Action ใหม่ที่อัปเดตทั้งคู่
-        const result = await updateProgramDetails(editingItem.academic_program_id, newFee, statusInput);
-
-        if (result.success) {
-            // Update State หน้าจอทันที
-            setPrograms(programs.map((p) =>
-                p.academic_program_id === editingItem.academic_program_id
-                    ? { ...p, tuition_per_semester: newFee, is_active: statusInput }
-                    : p
-            ));
-            setIsModalOpen(false);
+        if (modalMode === "edit") {
+            if (!editingItem) return;
+            const newFee = parseFloat(editFeeInput) || 0;
+            
+            const result = await updateProgramDetails(editingItem.academic_program_id, newFee, editStatusInput);
+            
+            if (result.success) {
+                fetchData(); 
+                setIsModalOpen(false);
+            } else {
+                alert("บันทึกไม่สำเร็จ");
+            }
         } else {
-            alert("บันทึกไม่สำเร็จ");
+            // Create Mode
+            if (!createForm.program_name) {
+                alert("กรุณากรอกชื่อหลักสูตร");
+                return;
+            }
+            const feeValue = parseFloat(createForm.tuition_per_semester) || 0;
+
+            const result = await createProgram({
+                program_name: createForm.program_name,
+                degree_level: createForm.degree_level,
+                program_type: createForm.program_type,
+                tuition_per_semester: feeValue
+            });
+
+            if (result.success) {
+                await fetchData();
+                setIsModalOpen(false);
+            } else {
+                alert("สร้างหลักสูตรไม่สำเร็จ");
+            }
         }
     };
 
@@ -87,15 +114,16 @@ export default function TuitionManagement() {
                 </td>
                 <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs rounded border 
-              ${program.degree_level === 'bachelor' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
-                        {program.degree_level.toUpperCase()}
+                        ${program.degree_level.includes('bachelor') ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
+                        {program.degree_level === 'bachelor' ? 'ปริญญาตรี' : 
+                         program.degree_level === 'bachelor_master' ? 'ปริญญาตรี-โท' :
+                         program.degree_level === 'master' ? 'ปริญญาโท' : 'ปริญญาเอก'}
                     </span>
                 </td>
                 <td className="px-6 py-4 text-right font-bold text-gray-700">
                     {formatCurrency(program.tuition_per_semester)}
                 </td>
                 <td className="px-6 py-4 text-center">
-                    {/* แสดงสถานะเฉยๆ ในตาราง (เพราะเราไปแก้ใน Modal แล้ว) */}
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${program.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {program.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -112,14 +140,16 @@ export default function TuitionManagement() {
         ));
     };
 
+    const normalPrograms = programs.filter(p => p.program_type === 'normal');
+    const interPrograms = programs.filter(p => p.program_type === 'international');
+
     return (
         <div className="flex min-h-screen bg-gray-50">
             <Sidebar />
             <main className="flex-1 ml-64 p-6">
                 <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden min-h-[80vh]">
-                    {/* Header Compact Brand (เหมือนเดิม) */}
+                    
                     <div className="bg-gradient-to-r from-slate-900 to-blue-900 rounded-xl shadow-lg mb-6 text-white overflow-hidden relative">
-                        {/* ลวดลายตกแต่งจางๆ (Optional) */}
                         <div className="absolute top-0 right-0 p-4 opacity-10">
                             <svg width="100" height="100" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z" /></svg>
                         </div>
@@ -136,16 +166,20 @@ export default function TuitionManagement() {
                                     <span className="bg-blue-800/50 text-blue-100 text-xs px-2 py-1 rounded border border-blue-700">
                                         Master Data
                                     </span>
-                                    <span className="text-blue-300 text-sm">
-                                        กำหนดรายรับแยกตามสาขาวิชา
-                                    </span>
                                 </div>
                             </div>
+                            
+                            <button 
+                                onClick={handleCreateClick}
+                                className="mt-4 md:mt-0 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-all transform hover:scale-105 font-medium border border-orange-400"
+                            >
+                                <Plus className="w-5 h-5" />
+                                เพิ่มหลักสูตรใหม่
+                            </button>
                         </div>
-
-                        {/* เส้นสีส้มคาดเล็กๆ ด้านล่าง เพื่อคง Theme */}
                         <div className="h-1 bg-orange-500 w-full"></div>
                     </div>
+
                     <div className="p-6">
                         {isLoading ? (
                             <div className="text-center py-10 text-gray-500 animate-pulse">กำลังโหลดข้อมูล...</div>
@@ -177,8 +211,9 @@ export default function TuitionManagement() {
                     </div>
                 </div>
             </main>
-            {/* ========================================= */}
-            {isModalOpen && editingItem && (
+
+            {/* Modal */}
+            {isModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                         <div className="fixed inset-0 transition-opacity" aria-hidden="true">
@@ -187,17 +222,64 @@ export default function TuitionManagement() {
                         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
                         <div className="relative z-10 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-
-                            {/* Modal Header */}
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 border-b border-gray-100">
-                                <h3 className="text-lg font-bold text-gray-900">แก้ไขข้อมูลหลักสูตร</h3>
-                                <p className="text-sm text-gray-500 mt-1">{editingItem.program_name}</p>
+                            
+                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 border-b border-gray-100 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">
+                                        {modalMode === 'edit' ? 'แก้ไขข้อมูลหลักสูตร' : 'เพิ่มหลักสูตรใหม่'}
+                                    </h3>
+                                    {modalMode === 'edit' && editingItem && (
+                                        <p className="text-sm text-gray-500 mt-1">{editingItem.program_name}</p>
+                                    )}
+                                </div>
+                                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-500">
+                                    <X className="w-5 h-5" />
+                                </button>
                             </div>
 
-                            {/* Modal Body */}
                             <div className="px-6 py-6 space-y-6">
+                                {modalMode === 'create' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อหลักสูตร</label>
+                                            <input
+                                                type="text"
+                                                value={createForm.program_name}
+                                                onChange={(e) => setCreateForm({...createForm, program_name: e.target.value})}
+                                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border px-3"
+                                                placeholder="ระบุชื่อหลักสูตร..."
+                                            />
+                                        </div>
 
-                                {/* 1. แก้ไขค่าเทอม */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">ระดับการศึกษา</label>
+                                                <select
+                                                    value={createForm.degree_level}
+                                                    onChange={(e) => setCreateForm({...createForm, degree_level: e.target.value as any})}
+                                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border px-3"
+                                                >
+                                                    <option value="bachelor">ปริญญาตรี</option>
+                                                    <option value="bachelor_master">ปริญญาตรี-โท</option>
+                                                    <option value="master">ปริญญาโท</option>
+                                                    <option value="phd">ปริญญาเอก</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">ประเภทหลักสูตร</label>
+                                                <select
+                                                    value={createForm.program_type}
+                                                    onChange={(e) => setCreateForm({...createForm, program_type: e.target.value as any})}
+                                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border px-3"
+                                                >
+                                                    <option value="normal">หลักสูตรปกติ</option>
+                                                    <option value="international">นานาชาติ</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         ค่าธรรมเนียมต่อภาคการศึกษา (บาท)
@@ -208,8 +290,11 @@ export default function TuitionManagement() {
                                         </div>
                                         <input
                                             type="number"
-                                            value={feeInput}
-                                            onChange={(e) => setFeeInput(e.target.value)}
+                                            value={modalMode === 'edit' ? editFeeInput : createForm.tuition_per_semester}
+                                            onChange={(e) => modalMode === 'edit' 
+                                                ? setEditFeeInput(e.target.value) 
+                                                : setCreateForm({...createForm, tuition_per_semester: e.target.value})
+                                            }
                                             className="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border"
                                             placeholder="0.00"
                                         />
@@ -217,32 +302,33 @@ export default function TuitionManagement() {
                                             <span className="text-gray-500 sm:text-sm">บาท</span>
                                         </div>
                                     </div>
+                                    <p className="mt-2 text-xs text-gray-500">* ราคามาตรฐานสำหรับการจัดทำงบประมาณ</p>
                                 </div>
 
-                                {/* 2. แก้ไขสถานะ (Toggle Switch) */}
-                                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                    <div>
-                                        <span className="block text-sm font-medium text-gray-900">สถานะการใช้งาน</span>
-                                        <span className="text-xs text-gray-500">ปิดเพื่อซ่อนหลักสูตรนี้จากการคำนวณ</span>
+                                {modalMode === 'edit' && (
+                                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <div>
+                                            <span className="block text-sm font-medium text-gray-900">สถานะการใช้งาน</span>
+                                            <span className="text-xs text-gray-500">ปิดเพื่อซ่อนหลักสูตรนี้</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setEditStatusInput(!editStatusInput)}
+                                            type="button"
+                                            className={`${editStatusInput ? 'bg-green-500' : 'bg-gray-300'} 
+                              relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+                                        >
+                                            <span aria-hidden="true" className={`${editStatusInput ? 'translate-x-5' : 'translate-x-0'} 
+                              pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                                            />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => setStatusInput(!statusInput)}
-                                        type="button"
-                                        className={`${statusInput ? 'bg-green-500' : 'bg-gray-300'} 
-                          relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
-                                    >
-                                        <span aria-hidden="true" className={`${statusInput ? 'translate-x-5' : 'translate-x-0'} 
-                          pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                                        />
-                                    </button>
-                                </div>
-
+                                )}
                             </div>
 
-                            {/* Modal Footer */}
                             <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
                                 <button onClick={handleSave} className="w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-                                    <Save className="w-4 h-4 mr-2" /> บันทึกการเปลี่ยนแปลง
+                                    <Save className="w-4 h-4 mr-2" /> 
+                                    {modalMode === 'edit' ? 'บันทึกการเปลี่ยนแปลง' : 'ยืนยันการเพิ่มหลักสูตร'}
                                 </button>
                                 <button onClick={() => setIsModalOpen(false)} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                                     ยกเลิก
@@ -255,4 +341,3 @@ export default function TuitionManagement() {
         </div>
     );
 }
-// 
