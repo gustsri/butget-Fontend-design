@@ -1,132 +1,67 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React from "react";
 
-type RowItemProps = {
+interface RowItemProps {
   label: string;
-  value?: number;
-  indent?: boolean;
-  highlight?: "deduct" | "total";
-  type?: "row" | "head";
+  value?: number;     // ถ้าเป็น undefined คือเป็นหัวข้อ (Head) ไม่มีช่องกรอก
+  indent?: boolean;   // ย่อหน้าหรือไม่
+  type?: "row" | "head"; 
+  isDeduction?: boolean; // เป็นรายการหักเงินหรือไม่ (สีแดง)
   editable?: boolean;
   onEdit?: (value: number) => void;
-};
+}
 
 export default function RowItem({
   label,
   value,
-  indent,
-  highlight,
-  type,
+  indent = false,
+  type = "row",
+  isDeduction = false,
   editable = false,
   onEdit,
 }: RowItemProps) {
+  
+  // Style สำหรับหัวข้อ (Head) vs รายการปกติ (Row)
   if (type === "head") {
     return (
-      <div className="bg-white px-6 py-3 border-b border-blue-900">
-        <h3 className="text-blue-900 font-semibold text-sm">{label}</h3>
+      <div className="py-3 px-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-800 text-sm">
+        {label}
       </div>
     );
   }
 
-  // base styles
-  let rowClass =
-    "flex items-center justify-between px-6 py-3.5 border-b border-gray-200 hover:bg-gray-50 transition-colors";
-  let labelClass = "text-gray-700 text-sm";
-  let valueClass = "text-right font-medium text-sm min-w-[180px]";
-
-  if (indent) labelClass += " pl-8";
-
-  // highlight style
-  if (highlight === "deduct") {
-    rowClass =
-      "flex items-center justify-between px-6 py-3.5 bg-red-50 border-b border-gray-200";
-    labelClass += " text-red-800 font-medium";
-    valueClass += " text-red-700";
-  } else if (highlight === "total") {
-    rowClass =
-      "flex items-center justify-between px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200";
-    labelClass += " text-green-800 font-bold";
-    valueClass += " text-green-700 font-bold text-base";
-  }
-
-  const [text, setText] = useState<string>("");
-
-  useEffect(() => {
-    if (typeof value === "number") {
-      setText(
-        value.toLocaleString("th-TH", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })
-      );
-    } else {
-      setText("");
-    }
-  }, [value]);
-
-  // ฟังก์ชันแปลง string -> number ปลอดภัย
-  const toNumber = (s: string) => {
-    // ตัดคอมมาและช่องว่าง
-    const clean = s.replace(/,/g, "").trim();
-    const n = Number(clean);
-    return isNaN(n) ? 0 : n;
-  };
-  const ReadOnlyValue = useMemo(() => {
-    const formatted =
-      typeof value === "number"
-        ? value.toLocaleString("th-TH", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })
-        : "";
-    return (
-      <>
-        <span className={valueClass}>{formatted}</span>
-        <span className="text-gray-500 text-xs ml-1">บาท</span>
-      </>
-    );
-  }, [value, valueClass]);
-
-  const EditableValue = (
-    <>
-      <input
-  inputMode="decimal"
-  className={`text-right ${valueClass} text-black border rounded-md px-2 py-1 w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white`}
-  value={text}
-  onChange={(e) => {
-    // ยอมให้พิมพ์ได้อิสระ แล้วค่อยฟอร์แมตตอน blur
-    setText(e.target.value);
-  }}
-  onBlur={() => {
-    const num = toNumber(text);
-    // ฟอร์แมตกลับเป็นมีคอมมา
-    const formatted = num.toLocaleString("th-TH", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    setText(formatted);
-    onEdit?.(num);
-  }}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      (e.target as HTMLInputElement).blur();
-    }
-  }}
-/>
-
-      <span className="text-gray-500 text-xs ml-1">บาท</span>
-    </>
-  );
-
   return (
-    <div className={rowClass}>
-      <span className={labelClass}>{label}</span>
-      <div className="flex items-center gap-2">
-        {highlight === "deduct" && (
-          <span className="text-red-600 text-xs font-medium">หัก</span>
+    <div className="flex items-center justify-between py-3 px-4 border-b border-gray-100 hover:bg-blue-50/30 transition-colors">
+      {/* Label: จัดย่อหน้าตาม indent */}
+      <div className={`flex-1 text-sm ${indent ? "pl-8 text-gray-600" : "font-medium text-gray-800"}`}>
+        {isDeduction && <span className="text-red-500 mr-1">(-)</span>}
+        {label}
+      </div>
+
+      {/* Input Field */}
+      <div className="w-48">
+        {editable ? (
+          <input
+            type="number"
+            value={value === 0 ? "" : value} // ซ่อนเลข 0
+            placeholder="0"
+            disabled={!editable}
+            onFocus={(e) => e.target.select()} // คลุมดำตอนคลิก
+            onChange={(e) => {
+              const val = e.target.value;
+              if (onEdit) onEdit(val === "" ? 0 : parseFloat(val));
+            }}
+            // Tailwind Class ซ่อนปุ่มลูกศร + จัดขวา
+            className={`w-full text-right bg-white border border-gray-200 rounded-md py-1 px-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none 
+              [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+              ${isDeduction ? "text-red-600 font-bold" : "text-gray-900"}`}
+          />
+        ) : (
+          <div className={`text-right text-sm font-bold ${isDeduction ? "text-red-600" : "text-gray-900"}`}>
+            {value?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
         )}
-        {editable ? EditableValue : ReadOnlyValue}
       </div>
     </div>
   );

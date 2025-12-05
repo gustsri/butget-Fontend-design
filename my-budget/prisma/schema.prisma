@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,7 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Enums ---
+// ==========================================
+// 1. Enums (ตัวเลือกต่างๆ)
+// ==========================================
 enum DegreeLevel {
   bachelor
   bachelor_master
@@ -27,23 +27,76 @@ enum PlanType {
   actual
 }
 
-// --- 1. ตารางปีงบประมาณรายรับ (เพิ่มใหม่) ---
-model RevenueBudget {
-  revenue_budget_id Int      @id @default(autoincrement())
-  budget_year       Int      @unique // ปีงบประมาณ (เช่น 2567) ห้ามซ้ำ
-  amount            Decimal  @default(0) @db.Decimal(15, 2) // ยอดรวมงบ (เผื่อใช้)
-  is_active         Boolean  @default(true)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+enum BudgetStatus {
+  draft
+  submitted
+  approved
+  rejected
+}
 
-  // Relation: 1 ปีงบ มีค่าเทอมและนักศึกษาหลายรายการ
-  student_fees          StudentFee[]
-  enrollment_info       EnrollmentInformation[]
+// ==========================================
+// 2. ส่วนจัดการงบประมาณรายรับ (Revenue)
+// ==========================================
+
+// ตารางปีงบประมาณ (Header)
+model RevenueBudget {
+  revenue_budget_id Int          @id @default(autoincrement())
+  budget_year       Int          @unique
+  
+  total_amount      Decimal      @default(0) @db.Decimal(15, 2)
+  net_amount        Decimal      @default(0) @db.Decimal(15, 2)
+  
+  status            BudgetStatus @default(draft)
+  version           Int          @default(1)
+  
+  is_active         Boolean      @default(true)
+  created_at        DateTime     @default(now())
+  updated_at        DateTime     @updatedAt
+
+  // Relations
+  sections          RevenueSection[] 
+  student_fees      StudentFee[]
+  enrollment_info   EnrollmentInformation[]
 
   @@map("revenue_budgets")
 }
 
-// --- 2. ตารางหลักสูตร ---
+// ตารางหมวดหมู่ (Section)
+model RevenueSection {
+  section_id        Int      @id @default(autoincrement())
+  revenue_budget_id Int
+  
+  section_name      String
+  sort_order        Int
+
+  // Relation
+  budget            RevenueBudget @relation(fields: [revenue_budget_id], references: [revenue_budget_id], onDelete: Cascade)
+  items             RevenueItem[] 
+
+  @@map("revenue_sections")
+}
+
+// ตารางรายการย่อย (Item)
+model RevenueItem {
+  item_id           Int      @id @default(autoincrement())
+  section_id        Int
+  
+  item_name         String
+  amount            Decimal  @default(0) @db.Decimal(15, 2)
+  
+  sort_order        Int
+  is_deduction      Boolean  @default(false)
+  
+  // Relation
+  section           RevenueSection @relation(fields: [section_id], references: [section_id], onDelete: Cascade)
+
+  @@map("revenue_items")
+}
+
+// ==========================================
+// 3. ส่วนข้อมูลการศึกษา (Academic & Enrollment)
+// ==========================================
+
 model AcademicProgram {
   academic_program_id Int         @id @default(autoincrement())
   program_name        String      @db.VarChar(255)
@@ -53,14 +106,13 @@ model AcademicProgram {
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
 
-  // Relation
+  // Relations
   student_fees          StudentFee[] 
   EnrollmentInformation EnrollmentInformation[]
 
   @@map("academic_programs") 
 }
 
-// --- 3. ตารางค่าธรรมเนียม ---
 model StudentFee {
   student_fee_id       Int      @id @default(autoincrement())
   academic_program_id  Int
@@ -69,14 +121,13 @@ model StudentFee {
   is_active            Boolean  @default(true)
   created_at           DateTime @default(now())
 
-  // Relation
+  // Relations
   program              AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
   budget               RevenueBudget   @relation(fields: [revenue_budget_id], references: [revenue_budget_id])
 
   @@map("student_fees")
 }
 
-// --- 4. ตารางจำนวนนักศึกษา ---
 model EnrollmentInformation {
   enrollment_id       Int      @id @default(autoincrement())
   
@@ -99,7 +150,7 @@ model EnrollmentInformation {
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
-  // Relation
+  // Relations
   program             AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
   budget              RevenueBudget   @relation(fields: [revenue_budget_id], references: [revenue_budget_id])
   
