@@ -2,7 +2,7 @@
 import React, { useState, useEffect, memo } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import YearDropdown from "@/components/shared/year"; 
-import { ChevronDown, Loader2, Save, AlertCircle, FileText, ClipboardList, Clock } from "lucide-react";
+import { ChevronDown, Loader2, Save, AlertCircle, FileText, ClipboardList, Clock, Calendar } from "lucide-react";
 import { getEnrollmentData, bulkUpdateEnrollment } from "./actions";
 
 // ==========================================
@@ -25,10 +25,9 @@ type StudentData = {
 };
 
 // ==========================================
-// 2. Sub-Components (Move OUTSIDE main component)
+// 2. Sub-Components
 // ==========================================
 
-// Header Component
 const TableHeader = () => (
     <div className="grid grid-cols-12 gap-2 bg-blue-50/80 p-3 rounded-t-lg border-b border-blue-100 text-xs font-bold text-blue-800 uppercase tracking-wider text-center items-center">
         <div className="col-span-4 text-left pl-4">ประเภทข้อมูล</div>
@@ -42,7 +41,6 @@ const TableHeader = () => (
     </div>
 );
 
-// Input Cell Component
 const InputCell = memo(({ field, val, isEditable, isInactive, onChange }: { 
     field: string, 
     val: number, 
@@ -75,17 +73,14 @@ const InputCell = memo(({ field, val, isEditable, isInactive, onChange }: {
         </div>
     )
 });
-
 InputCell.displayName = "InputCell";
 
-// Row Component
 const EnrollmentRow = memo(({ item, isEditable, onEdit }: { 
     item: StudentData, 
     isEditable: boolean,
     onEdit: (id: number, field: string, value: string, planType: "plan" | "actual") => void
 }) => {
     const isPlan = item.planType === 'plan';
-    
     const handleChange = (field: string, val: string) => {
         onEdit(item.id, field, val, item.planType);
     };
@@ -116,7 +111,6 @@ const EnrollmentRow = memo(({ item, isEditable, onEdit }: {
         </div>
     );
 });
-
 EnrollmentRow.displayName = "EnrollmentRow";
 
 
@@ -127,20 +121,26 @@ export default function EnrollmentPage() {
   const [data, setData] = useState<StudentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  
+  // ✅ เพิ่ม State สำหรับ Semester (1 หรือ 2)
+  const [selectedSemester, setSelectedSemester] = useState<number>(1);
+
   const [editableCategory, setEditableCategory] = useState<"plan" | "actual">("plan");
   const [pendingChanges, setPendingChanges] = useState<Record<string, Record<string, number>>>({});
 
+  // Fetch Data เมื่อ Year หรือ Semester เปลี่ยน
   useEffect(() => {
     if (selectedYear) {
       fetchData();
     }
-  }, [selectedYear]);
+  }, [selectedYear, selectedSemester]);
 
   const fetchData = async () => {
     if (!selectedYear) return;
     setIsLoading(true);
     try {
-      const result = await getEnrollmentData(selectedYear);
+      // ✅ ส่ง selectedSemester ไปด้วย
+      const result = await getEnrollmentData(selectedYear, selectedSemester);
       setData(result as any);
       setPendingChanges({}); 
     } catch (error) {
@@ -217,7 +217,8 @@ export default function EnrollmentPage() {
 
     if (itemsToUpdate.length === 0) return;
     setIsLoading(true); 
-    const result = await bulkUpdateEnrollment(itemsToUpdate, selectedYear);
+    // ✅ ส่ง selectedSemester ไปตอนบันทึก
+    const result = await bulkUpdateEnrollment(itemsToUpdate, selectedYear, selectedSemester);
 
     if (result.success) {
       alert("บันทึกข้อมูลเรียบร้อย ✅");
@@ -237,26 +238,41 @@ export default function EnrollmentPage() {
       <main className="flex-1 ml-64 p-6">
         <div className="max-w-6xl mx-auto">
           
-          {/* ✅ FIX: เอา overflow-hidden ออก, ใส่ relative z-20 แทน */}
           <div className="bg-white rounded-xl shadow-sm border border-blue-100 mb-6 relative z-20">
-            {/* ใส่ rounded-t-xl เพื่อคงมุมมนด้านบน */}
             <div className="bg-gradient-to-r from-blue-900 to-indigo-900 px-8 py-6 flex justify-between items-center text-white rounded-t-xl">
               <div>
                  <h1 className="text-2xl font-bold">ระบบสนับสนุนการจัดทำงบประมาณ</h1>
                  <p className="text-blue-200 text-sm mt-1">บันทึกข้อมูลจำนวนนักศึกษาแยกตามหลักสูตร</p>
               </div>
-              {/* Dropdown จะไม่โดนตัดแล้ว */}
-              <YearDropdown onYearChange={(id) => setSelectedYear(id)} />
+              
+              <div className="flex items-center gap-4">
+                  {/* ✅ ตัวเลือก Semester */}
+                  <div className="bg-blue-800/50 p-1 rounded-lg flex items-center border border-blue-700/50">
+                      <button 
+                        onClick={() => setSelectedSemester(1)}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${selectedSemester === 1 ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-200 hover:text-white hover:bg-white/10'}`}
+                      >
+                         <span>ภาคเรียนที่ 1</span>
+                      </button>
+                      <button 
+                        onClick={() => setSelectedSemester(2)}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${selectedSemester === 2 ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-200 hover:text-white hover:bg-white/10'}`}
+                      >
+                         <span>ภาคเรียนที่ 2</span>
+                      </button>
+                  </div>
+
+                  <YearDropdown onYearChange={(id) => setSelectedYear(id)} />
+              </div>
             </div>
 
-            {/* ใส่ rounded-b-xl เพื่อคงมุมมนด้านล่าง */}
             <div className="bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center rounded-b-xl">
                <div className="flex items-center gap-2">
                   <div className="bg-blue-50 p-2 rounded-lg">
                     <FileText className="w-5 h-5 text-blue-700" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-gray-700">ปีงบประมาณ {selectedYear ? 'ที่เลือก' : '...'}</h2>
+                    <h2 className="text-sm font-bold text-gray-700">ปีงบประมาณ {selectedYear ? 'ที่เลือก' : '...'} / เทอม {selectedSemester}</h2>
                     <p className="text-xs text-gray-500">กรุณาเลือกประเภทข้อมูลที่ต้องการแก้ไข</p>
                   </div>
                </div>
@@ -279,7 +295,7 @@ export default function EnrollmentPage() {
           </div>
 
           {/* Content */}
-          <div className="relative z-10"> {/* ให้ Content อยู่ต่ำกว่า Header (z-index) */}
+          <div className="relative z-10">
             {isLoading ? (
               <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 text-blue-600 animate-spin" /></div>
             ) : !selectedYear ? (
