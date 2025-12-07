@@ -154,3 +154,62 @@ model EnrollmentInformation {
   @@map("enrollment_information")
   @@unique([academic_program_id, revenue_budget_id, plan_type, academic_year, semester])
 }
+// prisma/schema.prisma
+
+model StructureCode {
+  id                  Int      @id @default(autoincrement()) // structure_code_id
+  code                String?  @db.VarChar(20)               // structure_code (รหัส)
+  name                String   @db.VarChar(255)              // structure_code_name (ชื่อรายการ)
+  level               Int      // ระดับชั้น (Indentation)
+  is_header           Boolean  @default(false)               // เป็นหัวข้อหรือไม่
+  
+  category  String?  @db.VarChar(50) // เช่น "EXPENSE_ESTIMATE", "INCOME", "GENERAL"
+
+  // Self-relation (Parent-Child) เพื่อรองรับ Hierarchy
+  parent_id           Int?
+  parent              StructureCode?  @relation("StructureHierarchy", fields: [parent_id], references: [id])
+  children            StructureCode[] @relation("StructureHierarchy")
+
+  // Relation ไปยัง Transaction (งบประมาณแต่ละปี)
+  expense_items       ExpenseItem[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("structure_codes")
+}
+
+model ExpenseBudget {
+  id              Int       @id @default(autoincrement())
+  academic_year   Int
+  total_amount    Decimal   @db.Decimal(12, 2) @default(0)
+  status          String    @default("DRAFT")
+  
+  items           ExpenseItem[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("expense_budgets")
+}
+
+model ExpenseItem {
+  id              Int       @id @default(autoincrement())
+  
+  budget_id       Int
+  budget          ExpenseBudget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+  
+  // Link กับ Master Data
+  structure_id    Int
+  structure       StructureCode @relation(fields: [structure_id], references: [id])
+
+  // ยอดเงิน (บันทึกเฉพาะค่าเงินที่นี่)
+  gov_amount      Decimal   @db.Decimal(12, 2) @default(0)
+  income_amount   Decimal   @db.Decimal(12, 2) @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([budget_id, structure_id])
+  @@map("expense_items")
+}

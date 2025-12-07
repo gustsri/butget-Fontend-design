@@ -1,148 +1,200 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import Sidebar from "@/components/shared/Sidebar";
-import YearDropdown from "@/components/shared/year";
-import structure from "@/data/budgetStructure.json";
-import initialData from "@/data/f3Data.json";
-
-type Sub = { label: string; budget: number; income: number; total: number; codes?: Record<string,string> };
-type Item = { code?: string; label: string; budget: number; income: number; total: number; codes?: Record<string,string>; subItems?: Sub[] };
-type Section = { sectionCode: string; sectionLabel: string; items: Item[] };
-
-const fmt=(n:number)=>Number(n||0).toLocaleString();
+import { useState, useEffect, useMemo } from "react";
+import Sidebar from "@/components/shared/Sidebar"; // ปรับ path ตามจริง
+import YearDropdown from "@/components/shared/year"; // ปรับ path ตามจริง
+import { Loader2, Save, RotateCcw } from "lucide-react";
+import { getExpenseData, saveExpenseItems, type ExpenseRow } from "./actions";
 
 export default function ExpensePage() {
   const [year, setYear] = useState(2569);
-  const [data, setData] = useState<Section[]>(initialData as Section[]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // Data State
+  const [budgetId, setBudgetId] = useState<number | null>(null);
+  const [rows, setRows] = useState<ExpenseRow[]>([]);
+  const [originalRows, setOriginalRows] = useState<ExpenseRow[]>([]);
 
-  const grand = useMemo(()=>{
-    let s=0;
-    data.forEach(sec=>{
-      sec.items.forEach(it=>{
-        s+=(it.total||0);
-        it.subItems?.forEach(sb=>s+=(sb.total||0));
+  // Fetch Data เมื่อปีเปลี่ยน
+  useEffect(() => {
+    loadData();
+  }, [year]);
+
+  async function loadData() {
+    setLoading(true);
+    try {
+      const data = await getExpenseData(year);
+      setBudgetId(data.budget_id);
+      setRows(data.rows);
+      setOriginalRows(JSON.parse(JSON.stringify(data.rows))); // เก็บค่าตั้งต้นไว้เทียบ
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // --- Logic คำนวณ Real-time (หัวใจสำคัญ) ---
+  const calculatedRows = useMemo(() => {
+    // Clone rows เพื่อไม่ให้กระทบ state หลักโดยตรงระหว่างคำนวณ
+    const map = new Map<number, ExpenseRow & { gov_sum: number; income_sum: number }>();
+    
+    // Init: ใส่ค่า user input ลงไปก่อน
+    rows.forEach(r => {
+      map.set(r.structure_id, { 
+        ...r, 
+        gov_sum: r.is_header ? 0 : r.gov_amount, 
+        income_sum: r.is_header ? 0 : r.income_amount 
       });
     });
-    return s;
-  },[data]);
 
-  const onChange=(sIdx:number,iIdx:number,field:"budget"|"income"|"total",v:string,subIdx?:number)=>{
-    setData(prev=>{
-      const next = structuredClone(prev) as Section[];
-      if(subIdx!==undefined){
-        next[sIdx].items[iIdx].subItems![subIdx][field]=Number(v||0);
-      }else{
-        next[sIdx].items[iIdx][field]=Number(v||0);
-      }
-      return next;
-    });
-  };
-
-  // แปะ path ชื่อหมวดจาก budgetStructure.json โดยใช้ prefix ของรหัส
-  const findPath=(code?:string)=>{
-    if(!code) return "";
-    const walk=(nodes:any[], acc:string[]):string=>{
-      for(const n of nodes){
-        if(code.startsWith(n.code)){
-          const here=[...acc, n.label];
-          if(n.children?.length){
-            const deeper = walk(n.children, here);
-            return deeper || here.join(" → ");
+    // Loop: บวกจาก Level ลึกสุด ขึ้นมาหา Level 0
+    const maxLevel = Math.max(...rows.map(r => r.level));
+    for (let l = maxLevel; l >= 0; l--) {
+      const currentLevelRows = rows.filter(r => r.level === l);
+      currentLevelRows.forEach(row => {
+        if (row.parent_id) {
+          const parent = map.get(row.parent_id);
+          const current = map.get(row.structure_id);
+          if (parent && current) {
+            parent.gov_sum += current.gov_sum;
+            parent.income_sum += current.income_sum;
           }
-          return here.join(" → ");
         }
-      }
-      return "";
-    };
-    return walk(structure as any[], []);
+      });
+    }
+    // Return เป็น Array เรียงตามลำดับเดิม
+    return rows.map(r => map.get(r.structure_id)!);
+  }, [rows]);
+
+  // Handle Input Change
+  const handleInputChange = (id: number, field: 'gov_amount' | 'income_amount', value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setRows(prev => prev.map(row => 
+      row.structure_id === id ? { ...row, [field]: numValue } : row
+    ));
   };
+
+  // Save Function
+  const handleSave = async () => {
+    if (!budgetId) return;
+    setSaving(true);
+    
+    // ส่งเฉพาะรายการที่เป็น Leaf Node (ตัวที่กรอกได้) ไปบันทึก
+    const itemsToSave = rows
+      .filter(r => !r.is_header) 
+      .map(r => ({
+        structure_id: r.structure_id,
+        gov: r.gov_amount,
+        income: r.income_amount
+      }));
+
+    await saveExpenseItems(budgetId, itemsToSave);
+    await loadData(); // Reload เพื่อ update state ให้ sync กับ DB
+    setSaving(false);
+  };
+
+  // ตรวจสอบว่ามีการแก้ไขหรือไม่ (เพื่อเปิด/ปิดปุ่ม Save)
+  const hasChanges = JSON.stringify(rows) !== JSON.stringify(originalRows);
+  const totalBudget = calculatedRows.find(r => r.parent_id === null)?.gov_sum || 0;
+  const totalIncome = calculatedRows.find(r => r.parent_id === null)?.income_sum || 0;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar/>
-      <main className="flex-1 ml-64 p-6">
-        <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md border">
-          <div className="p-6 border-b text-center">
-            <h1 className="text-2xl font-bold">สรุปรายจ่าย (F-3)</h1>
-            <div className="mt-2 flex items-center justify-center gap-6 text-sm text-gray-700">
-              <div className="flex items-center gap-2">
-                <span>ปีงบประมาณ:</span>
-                <YearDropdown onYearChange={setYear}/>
-                <span className="font-semibold">{year}</span>
-              </div>
-              <div>รวมทั้งสิ้น: <b className="text-blue-700">{fmt(grand)}</b> บาท</div>
-            </div>
+      <Sidebar />
+      <div className="ml-64 flex-1 flex flex-col">
+        
+        {/* Header */}
+        <div className="bg-white border-b px-8 py-4 flex justify-between items-center sticky top-0 z-20 shadow-sm">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">ประมาณการรายจ่าย (F5)</h1>
+            <p className="text-gray-500 text-sm">ปีงบประมาณ {year}</p>
           </div>
-
-          <div className="p-6">
-            {data.map((sec, sIdx)=>(
-              <div key={sec.sectionCode} className="mb-10">
-                <div className="bg-gray-100 px-4 py-2 rounded font-semibold text-gray-800">
-                  {sec.sectionLabel} ({sec.sectionCode})
-                </div>
-
-                <div className="overflow-x-auto mt-3">
-                  <table className="min-w-full border border-gray-300 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="border px-3 py-2 w-40 text-left">รหัสโครงสร้าง</th>
-                        <th className="border px-3 py-2 text-left">รายการ</th>
-                        <th className="border px-3 py-2 w-56 text-left">หมวด/ลำดับ (จากโครงสร้าง)</th>
-                        <th className="border px-3 py-2 w-28 text-right">งบประมาณ</th>
-                        <th className="border px-3 py-2 w-28 text-right">รายได้</th>
-                        <th className="border px-3 py-2 w-28 text-right">รวม</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sec.items.map((it, iIdx)=>(
-                        <React.Fragment key={`${sec.sectionCode}-${it.code || it.label}-${iIdx}`}>
-                          <tr className="hover:bg-gray-50">
-                            <td className="border px-3 py-2 font-mono">{it.code || ""}</td>
-                            <td className="border px-3 py-2">{it.label}</td>
-                            <td className="border px-3 py-2 text-xs text-gray-600">{findPath(it.code)}</td>
-                            {(["budget","income","total"] as const).map((f)=>(
-                              <td key={f} className="border px-3 py-2 text-right">
-                                <input
-                                  type="number"
-                                  className="w-full text-right bg-transparent focus:outline-none"
-                                  value={it[f]}
-                                  onChange={(e)=>onChange(sIdx,iIdx,f,e.target.value)}
-                                />
-                              </td>
-                            ))}
-                          </tr>
-
-                          {/* บรรทัดลูก (ไม่มีรหัส) → indent + italic */}
-                          {it.subItems?.map((sb, subIdx)=>(
-                            <tr key={`${sec.sectionCode}-${iIdx}-sub-${subIdx}`} className="bg-gray-50">
-                              <td className="border px-3 py-2 font-mono text-xs text-gray-500">
-                                {sb.codes?.structure || ""}
-                              </td>
-                              <td className="border px-3 py-2 pl-8 italic text-gray-700">{sb.label}</td>
-                              <td className="border px-3 py-2 text-xs text-gray-600">{findPath(sb.codes?.structure)}</td>
-                              {(["budget","income","total"] as const).map((f)=>(
-                                <td key={f} className="border px-3 py-2 text-right">
-                                  <input
-                                    type="number"
-                                    className="w-full text-right bg-transparent focus:outline-none"
-                                    value={sb[f]}
-                                    onChange={(e)=>onChange(sIdx,iIdx,f,e.target.value,subIdx)}
-                                  />
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </React.Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center gap-4">
+             <div className="text-right text-sm mr-4">
+                <div className="text-gray-500">ยอดรวมทั้งสิ้น</div>
+                <div className="font-bold text-blue-600 text-lg">{(totalBudget + totalIncome).toLocaleString()} บาท</div>
+             </div>
+             <YearDropdown selectedYear={year} onChange={setYear} />
+             {hasChanges && (
+                <button 
+                  onClick={handleSave} 
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>}
+                  บันทึก
+                </button>
+             )}
           </div>
         </div>
-      </main>
+
+        {/* Table Area */}
+        <div className="flex-1 p-8 overflow-auto">
+          {loading ? (
+             <div className="flex justify-center items-center h-full text-gray-400">
+               <Loader2 className="animate-spin w-8 h-8" />
+             </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100 text-gray-600 font-medium border-b">
+                  <tr>
+                    <th className="py-3 px-4 w-24 text-center">รหัส</th>
+                    <th className="py-3 px-4">รายการ</th>
+                    <th className="py-3 px-4 w-40 text-right">เงินงบประมาณ</th>
+                    <th className="py-3 px-4 w-40 text-right">เงินรายได้</th>
+                    <th className="py-3 px-4 w-40 text-right bg-gray-50">รวม</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {calculatedRows.map((row) => (
+                    <tr key={row.structure_id} className={`hover:bg-blue-50/50 transition-colors ${row.is_header ? 'bg-gray-50/30' : ''}`}>
+                      <td className="py-2 px-4 text-center text-gray-400 font-mono text-xs">{row.code}</td>
+                      <td className="py-2 px-4">
+                        <div style={{ paddingLeft: `${row.level * 24}px` }} 
+                             className={`${row.is_header ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
+                          {row.name}
+                        </div>
+                      </td>
+                      <td className="py-2 px-4 text-right">
+                        {row.is_header ? (
+                          <span className="text-gray-400 font-medium">{row.gov_sum > 0 ? row.gov_sum.toLocaleString() : '-'}</span>
+                        ) : (
+                          <input 
+                            type="number" 
+                            className="w-full text-right border-gray-200 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                            value={row.gov_amount || ''}
+                            onChange={e => handleInputChange(row.structure_id, 'gov_amount', e.target.value)}
+                            placeholder="-"
+                          />
+                        )}
+                      </td>
+                      <td className="py-2 px-4 text-right">
+                        {row.is_header ? (
+                          <span className="text-gray-400 font-medium">{row.income_sum > 0 ? row.income_sum.toLocaleString() : '-'}</span>
+                        ) : (
+                          <input 
+                            type="number" 
+                            className="w-full text-right border-gray-200 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                            value={row.income_amount || ''}
+                            onChange={e => handleInputChange(row.structure_id, 'income_amount', e.target.value)}
+                            placeholder="-"
+                          />
+                        )}
+                      </td>
+                      <td className="py-2 px-4 text-right font-medium text-gray-700 bg-gray-50/30">
+                        {(row.gov_sum + row.income_sum).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
