@@ -5,6 +5,7 @@ import ExpenseHeader from "../_components/ExpenseHeader";
 import { DocumentChartBarIcon, ArrowDownTrayIcon, PrinterIcon } from "@heroicons/react/24/outline";
 import RevenueTable from "../_components/RevenueTable";
 import F3RevenueSection from "../_components/F3RevenueSection";
+import F3ExpenseSection from "../_components/F3ExpenseSection";
 // สมมติ Type ของข้อมูล F-5 (ปรับตาม Database จริงของคุณ)
 type BudgetSummary = {
   category: string;
@@ -89,6 +90,7 @@ export default function F5Page() {
         {/* <RevenueTable>
         </RevenueTable> */}
         <F3RevenueSection></F3RevenueSection>
+        <F3ExpenseSection></F3ExpenseSection>
       </div>
 
     </div>
