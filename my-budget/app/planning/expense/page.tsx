@@ -1,199 +1,82 @@
-"use client";
+// app/expense/page.tsx
+import Link from "next/link";
 
-import { useState, useEffect, useMemo } from "react";
-import Sidebar from "@/components/shared/Sidebar"; // ปรับ path ตามจริง
-import YearDropdown from "@/components/shared/year"; // ปรับ path ตามจริง
-import { Loader2, Save, RotateCcw } from "lucide-react";
-import { getExpenseData, saveExpenseItems, type ExpenseRow } from "./actions";
-
-export default function ExpensePage() {
-  const [year, setYear] = useState(2569);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  
-  // Data State
-  const [budgetId, setBudgetId] = useState<number | null>(null);
-  const [rows, setRows] = useState<ExpenseRow[]>([]);
-  const [originalRows, setOriginalRows] = useState<ExpenseRow[]>([]);
-
-  // Fetch Data เมื่อปีเปลี่ยน
-  useEffect(() => {
-    loadData();
-  }, [year]);
-
-  async function loadData() {
-    setLoading(true);
-    try {
-      const data = await getExpenseData(year);
-      setBudgetId(data.budget_id);
-      setRows(data.rows);
-      setOriginalRows(JSON.parse(JSON.stringify(data.rows))); // เก็บค่าตั้งต้นไว้เทียบ
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // --- Logic คำนวณ Real-time (หัวใจสำคัญ) ---
-  const calculatedRows = useMemo(() => {
-    // Clone rows เพื่อไม่ให้กระทบ state หลักโดยตรงระหว่างคำนวณ
-    const map = new Map<number, ExpenseRow & { gov_sum: number; income_sum: number }>();
-    
-    // Init: ใส่ค่า user input ลงไปก่อน
-    rows.forEach(r => {
-      map.set(r.structure_id, { 
-        ...r, 
-        gov_sum: r.is_header ? 0 : r.gov_amount, 
-        income_sum: r.is_header ? 0 : r.income_amount 
-      });
-    });
-
-    // Loop: บวกจาก Level ลึกสุด ขึ้นมาหา Level 0
-    const maxLevel = Math.max(...rows.map(r => r.level));
-    for (let l = maxLevel; l >= 0; l--) {
-      const currentLevelRows = rows.filter(r => r.level === l);
-      currentLevelRows.forEach(row => {
-        if (row.parent_id) {
-          const parent = map.get(row.parent_id);
-          const current = map.get(row.structure_id);
-          if (parent && current) {
-            parent.gov_sum += current.gov_sum;
-            parent.income_sum += current.income_sum;
-          }
-        }
-      });
-    }
-    // Return เป็น Array เรียงตามลำดับเดิม
-    return rows.map(r => map.get(r.structure_id)!);
-  }, [rows]);
-
-  // Handle Input Change
-  const handleInputChange = (id: number, field: 'gov_amount' | 'income_amount', value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setRows(prev => prev.map(row => 
-      row.structure_id === id ? { ...row, [field]: numValue } : row
-    ));
-  };
-
-  // Save Function
-  const handleSave = async () => {
-    if (!budgetId) return;
-    setSaving(true);
-    
-    // ส่งเฉพาะรายการที่เป็น Leaf Node (ตัวที่กรอกได้) ไปบันทึก
-    const itemsToSave = rows
-      .filter(r => !r.is_header) 
-      .map(r => ({
-        structure_id: r.structure_id,
-        gov: r.gov_amount,
-        income: r.income_amount
-      }));
-
-    await saveExpenseItems(budgetId, itemsToSave);
-    await loadData(); // Reload เพื่อ update state ให้ sync กับ DB
-    setSaving(false);
-  };
-
-  // ตรวจสอบว่ามีการแก้ไขหรือไม่ (เพื่อเปิด/ปิดปุ่ม Save)
-  const hasChanges = JSON.stringify(rows) !== JSON.stringify(originalRows);
-  const totalBudget = calculatedRows.find(r => r.parent_id === null)?.gov_sum || 0;
-  const totalIncome = calculatedRows.find(r => r.parent_id === null)?.income_sum || 0;
-
+export default function ExpenseDashboard() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="ml-64 flex-1 flex flex-col">
-        
-        {/* Header */}
-        <div className="bg-white border-b px-8 py-4 flex justify-between items-center sticky top-0 z-20 shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">ประมาณการรายจ่าย (F5)</h1>
-            <p className="text-gray-500 text-sm">ปีงบประมาณ {year}</p>
-          </div>
-          <div className="flex items-center gap-4">
-             <div className="text-right text-sm mr-4">
-                <div className="text-gray-500">ยอดรวมทั้งสิ้น</div>
-                <div className="font-bold text-blue-600 text-lg">{(totalBudget + totalIncome).toLocaleString()} บาท</div>
-             </div>
-             <YearDropdown selectedYear={year} onChange={setYear} />
-             {hasChanges && (
-                <button 
-                  onClick={handleSave} 
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>}
-                  บันทึก
-                </button>
-             )}
-          </div>
-        </div>
+    <div className="space-y-8">
+      {/* Header ของหน้า */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">จัดการแผนงบประมาณรายจ่าย</h1>
+        <p className="text-gray-500 mt-2">
+          เลือกรายการแบบฟอร์มที่ต้องการดำเนินการ
+        </p>
+      </div>
 
-        {/* Table Area */}
-        <div className="flex-1 p-8 overflow-auto">
-          {loading ? (
-             <div className="flex justify-center items-center h-full text-gray-400">
-               <Loader2 className="animate-spin w-8 h-8" />
-             </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-100 text-gray-600 font-medium border-b">
-                  <tr>
-                    <th className="py-3 px-4 w-24 text-center">รหัส</th>
-                    <th className="py-3 px-4">รายการ</th>
-                    <th className="py-3 px-4 w-40 text-right">เงินงบประมาณ</th>
-                    <th className="py-3 px-4 w-40 text-right">เงินรายได้</th>
-                    <th className="py-3 px-4 w-40 text-right bg-gray-50">รวม</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {calculatedRows.map((row) => (
-                    <tr key={row.structure_id} className={`hover:bg-blue-50/50 transition-colors ${row.is_header ? 'bg-gray-50/30' : ''}`}>
-                      <td className="py-2 px-4 text-center text-gray-400 font-mono text-xs">{row.code}</td>
-                      <td className="py-2 px-4">
-                        <div style={{ paddingLeft: `${row.level * 24}px` }} 
-                             className={`${row.is_header ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
-                          {row.name}
-                        </div>
-                      </td>
-                      <td className="py-2 px-4 text-right">
-                        {row.is_header ? (
-                          <span className="text-gray-400 font-medium">{row.gov_sum > 0 ? row.gov_sum.toLocaleString() : '-'}</span>
-                        ) : (
-                          <input 
-                            type="number" 
-                            className="w-full text-right border-gray-200 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            value={row.gov_amount || ''}
-                            onChange={e => handleInputChange(row.structure_id, 'gov_amount', e.target.value)}
-                            placeholder="-"
-                          />
-                        )}
-                      </td>
-                      <td className="py-2 px-4 text-right">
-                        {row.is_header ? (
-                          <span className="text-gray-400 font-medium">{row.income_sum > 0 ? row.income_sum.toLocaleString() : '-'}</span>
-                        ) : (
-                          <input 
-                            type="number" 
-                            className="w-full text-right border-gray-200 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            value={row.income_amount || ''}
-                            onChange={e => handleInputChange(row.structure_id, 'income_amount', e.target.value)}
-                            placeholder="-"
-                          />
-                        )}
-                      </td>
-                      <td className="py-2 px-4 text-right font-medium text-gray-700 bg-gray-50/30">
-                        {(row.gov_sum + row.income_sum).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {/* Grid เมนูเลือก F-Type */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Card: F-3 */}
+        <Link 
+          href="/planning/expense/f-5" 
+          className="group block p-6 bg-white border border-gray-200 rounded-xl hover:shadow-lg hover:border-blue-300 transition-all duration-200"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              {/* Icon Table */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 1.5v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M19.125 12h-1.5a.375.375 0 0 1-.375-.375v-.75a.375.375 0 0 1 .375-.375h1.5a.375.375 0 0 1 .375.375v.75a.375.375 0 0 1-.375.375Z" />
+              </svg>
             </div>
-          )}
-        </div>
+            <span className="text-gray-400 group-hover:text-blue-600 text-sm">Action</span>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">จัดสรรงบรายได้ (F-5)</h3>
+          <p className="text-gray-500 text-sm mb-4">
+            จัดสรรเงินรายได้เข้าสู่โครงการและกิจกรรมต่างๆ ตามแผนงาน
+          </p>
+          <span className="text-blue-600 text-sm font-medium group-hover:underline">เข้าสู่หน้าทำงาน &rarr;</span>
+        </Link>
+
+        {/* Card: F-5 */}
+        <Link 
+          href="/planning/expense/f-3" 
+          className="group block p-6 bg-white border border-gray-200 rounded-xl hover:shadow-lg hover:border-green-300 transition-all duration-200"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-green-50 text-green-600 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-colors">
+              {/* Icon Chart */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+              </svg>
+            </div>
+            <span className="text-gray-400 group-hover:text-green-600 text-sm">Report</span>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">สรุปงบประมาณ (F-3)</h3>
+          <p className="text-gray-500 text-sm mb-4">
+            ดูภาพรวมการประมาณการรายรับและรายจ่ายทั้งหมดประจำปี
+          </p>
+          <span className="text-green-600 text-sm font-medium group-hover:underline">ดูรายงาน &rarr;</span>
+        </Link>
+
+        {/* Card: F-23 */}
+        <Link 
+          href="/planning/expense/f-23" 
+          className="group block p-6 bg-white border border-gray-200 rounded-xl hover:shadow-lg hover:border-purple-300 transition-all duration-200"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
+              {/* Icon List */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 17.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+              </svg>
+            </div>
+            <span className="text-gray-400 group-hover:text-purple-600 text-sm">Report</span>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">สรุปรายจ่าย (F-23)</h3>
+          <p className="text-gray-500 text-sm mb-4">
+            รายละเอียดสรุปหมวดรายจ่ายตามแผนงานและกิจกรรม
+          </p>
+          <span className="text-purple-600 text-sm font-medium group-hover:underline">ดูรายงาน &rarr;</span>
+        </Link>
       </div>
     </div>
   );
