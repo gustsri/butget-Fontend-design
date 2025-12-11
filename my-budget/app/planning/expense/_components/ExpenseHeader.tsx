@@ -18,9 +18,9 @@ export default function ExpenseHeader({ title, subtitle, yearSelector }: Expense
 
     // รายการ Tabs ที่จะให้สลับไปมาได้เลย
     const tabs = [
-        { name: "F-3 จัดสรรงบ", href: "/expense/f-3" },
-        { name: "F-5 สรุปงบประมาณ", href: "/expense/f-5" },
-        { name: "F-23 สรุปรายจ่าย", href: "/expense/f-23" },
+        { name: "F-5 จัดสรรงบ", href: "/planning/expense/f-5" },
+        { name: "F-3 สรุปงบประมาณ", href: "/planning/expense/f-3" },
+        { name: "F-23 สรุปรายจ่าย", href: "/planning/expense/f-23" },
     ];
 
     return (
