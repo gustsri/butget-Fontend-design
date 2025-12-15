@@ -12,7 +12,6 @@ type ProgramWithFee = {
     degree_level: "bachelor" | "bachelor_master" | "master" | "phd";
     program_type: "normal" | "international";
     is_active: boolean;
-    student_fee_id?: number | null;
     tuition_per_semester?: number | null;
 };
 

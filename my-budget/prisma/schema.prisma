@@ -101,28 +101,16 @@ model AcademicProgram {
   program_name        String      @db.VarChar(255)
   degree_level        DegreeLevel
   program_type        ProgramType
+  tuition_per_semester Decimal    @default(0) @db.Decimal(12, 2)
+  
   is_active           Boolean     @default(true)
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
 
   // Relations
-  student_fees          StudentFee[] 
   EnrollmentInformation EnrollmentInformation[]
 
   @@map("academic_programs") 
-}
-
-model StudentFee {
-  student_fee_id       Int      @id @default(autoincrement())
-  academic_program_id  Int   
-  tuition_per_semester Decimal  @db.Decimal(12, 2)
-  is_active            Boolean  @default(true)
-  created_at           DateTime @default(now())
-
-  // Relations
-  program              AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
-
-  @@map("student_fees")
 }
 
 model EnrollmentInformation {
