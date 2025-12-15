@@ -55,7 +55,6 @@ model RevenueBudget {
 
   // Relations
   sections          RevenueSection[] 
-  enrollment_info   EnrollmentInformation[]
 
   @@map("revenue_budgets")
 }
@@ -102,7 +101,7 @@ model AcademicProgram {
   degree_level        DegreeLevel
   program_type        ProgramType
   tuition_per_semester Decimal    @default(0) @db.Decimal(12, 2)
-  
+
   is_active           Boolean     @default(true)
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
@@ -116,9 +115,7 @@ model AcademicProgram {
 model EnrollmentInformation {
   enrollment_id       Int      @id @default(autoincrement())
   
-  academic_program_id Int
-  revenue_budget_id   Int      
-  
+  academic_program_id Int     
   academic_year       Int      
   semester            Int      
   
@@ -137,12 +134,10 @@ model EnrollmentInformation {
 
   // Relations
   program             AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
-  budget              RevenueBudget   @relation(fields: [revenue_budget_id], references: [revenue_budget_id])
   
   @@map("enrollment_information")
-  @@unique([academic_program_id, revenue_budget_id, plan_type, academic_year, semester])
+  @@unique([academic_program_id, academic_year, semester, plan_type])
 }
-// prisma/schema.prisma
 
 model StructureCode {
   id                  Int      @id @default(autoincrement()) // structure_code_id
