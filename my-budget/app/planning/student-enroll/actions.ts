@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// --- 1. ดึงรายชื่อปีงบประมาณ ---
+// --- 1. ดึงรายชื่อปีงบประมาณ (สำหรับ Dropdown) ---
 export async function getBudgetYears() {
   const budgets = await prisma.revenueBudget.findMany({
     where: { is_active: true },
@@ -13,41 +13,57 @@ export async function getBudgetYears() {
   return budgets.map((b) => ({ id: b.revenue_budget_id, year: b.budget_year }));
 }
 
-// --- 2. ดึงข้อมูลนักศึกษา (รองรับ Semester) ---
-// ✅ เพิ่ม parameter: semester
-export async function getEnrollmentData(currentBudgetId: number, semester: number) {
-  const currentBudget = await prisma.revenueBudget.findUnique({
-    where: { revenue_budget_id: currentBudgetId },
-    select: { budget_year: true }
-  });
+// --- 2. สร้างปีงบประมาณใหม่ (Auto-create logic) ---
+// ✅ เหลือฟังก์ชันเดียว ไม่ซ้ำแล้ว
+export async function createBudgetYear(year: number) {
+  try {
+    const existing = await prisma.revenueBudget.findFirst({
+      where: { budget_year: year }
+    });
 
-  if (!currentBudget) return [];
+    if (existing) {
+      return { id: existing.revenue_budget_id, year: existing.budget_year };
+    }
 
-  // หา ID ของปีงบประมาณก่อนหน้า (เพื่อใช้เช็ค Phasing Out)
-  const prevBudget = await prisma.revenueBudget.findFirst({
-    where: { budget_year: currentBudget.budget_year - 1 },
-    select: { revenue_budget_id: true }
-  });
+    const newBudget = await prisma.revenueBudget.create({
+      data: {
+        budget_year: year,
+        is_active: true,
+      },
+    });
 
-  const prevBudgetId = prevBudget?.revenue_budget_id;
+    revalidatePath("/");
+    return { id: newBudget.revenue_budget_id, year: newBudget.budget_year };
 
-  // ดึงข้อมูล Enrollment ของปีนี้ (ตาม Semester ที่เลือก) และปีก่อนหน้า (ยอดรวม)
+  } catch (error) {
+    console.error("Error creating budget year:", error);
+    throw new Error("Failed to create budget year");
+  }
+}
+
+// --- 3. ดึงข้อมูลนักศึกษา (Refactor: ใช้ Year แทน ID) ---
+export async function getEnrollmentData(year: number, semester: number) {
+  // ไม่ต้องหา ID แล้ว ใช้ year ตรงๆ ได้เลย
+  const currentYear = year;
+  const prevYear = year - 1;
+
+  // ดึงข้อมูล Enrollment ของปีนี้ (ตาม Semester) และปีก่อนหน้า (ยอดรวม)
   const programs = await prisma.academicProgram.findMany({
     include: {
       EnrollmentInformation: {
-        where: { 
+        where: {
           OR: [
-            // เงื่อนไข 1: ของปีปัจจุบัน ต้องตรงกับ Semester ที่เลือก
-            { revenue_budget_id: currentBudgetId, semester: semester },
-            // เงื่อนไข 2: ของปีก่อนหน้า เอามาทั้งหมดเพื่อเช็คว่ามี นศ. ค้างไหม
-            ...(prevBudgetId ? [{ revenue_budget_id: prevBudgetId }] : [])
+            // เงื่อนไข 1: ของปีที่เลือก + เทอมที่เลือก
+            { academic_year: currentYear, semester: semester },
+            // เงื่อนไข 2: ของปีก่อนหน้า (เอามาเช็ค Phasing Out)
+            { academic_year: prevYear }
           ]
         },
       },
     },
     orderBy: { academic_program_id: "asc" },
   });
-  
+
   const degreeMap: Record<string, string> = {
     bachelor: "ปริญญาตรี",
     bachelor_master: "ปริญญาตรี-โท",
@@ -56,49 +72,48 @@ export async function getEnrollmentData(currentBudgetId: number, semester: numbe
   };
 
   const results = [];
-  
+
   for (const p of programs) {
-    // ข้อมูลของ "ปีปัจจุบัน + เทอมที่เลือก"
+    // กรองข้อมูลใน Memory (เพราะดึงมาแค่นิดเดียว)
     const currentEnrollments = p.EnrollmentInformation.filter(
-        e => e.revenue_budget_id === currentBudgetId && e.semester === semester
+      e => e.academic_year === currentYear && e.semester === semester
     );
 
-    // ข้อมูลของ "ปีก่อนหน้า" (เอามาทุกเทอมรวมกันเพื่อดูว่าเคยมีเด็กไหม)
     const prevEnrollments = p.EnrollmentInformation.filter(
-        e => e.revenue_budget_id === prevBudgetId
+      e => e.academic_year === prevYear
     );
 
-    const prevTotal = prevEnrollments.reduce((sum, e) => 
+    const prevTotal = prevEnrollments.reduce((sum, e) =>
       sum + e.year1_count + e.year2_count + e.year3_count + e.year4_count + e.year5_count + e.year6_count, 0
     );
 
     const hasCurrentData = currentEnrollments.length > 0;
-    // Phasing Out Logic: ถ้าปิดหลักสูตร แต่ปีก่อนยังมีเด็กเรียนอยู่ -> ต้องแสดง
+    // Logic: ถ้าหลักสูตรปิด + ปีนี้ไม่มีข้อมูล + ปีก่อนก็ไม่มีเด็ก = ไม่ต้องแสดง
     const isPhasingOut = !p.is_active && prevTotal > 0;
-    
+
     if (!p.is_active && !hasCurrentData && !isPhasingOut) {
-        continue;
+      continue;
     }
 
     const createRow = (type: "plan" | "actual") => {
-        const enrollment = currentEnrollments.find((e) => e.plan_type === type) || {};
-        const year1 = enrollment.year1_count || 0;
-        const year2 = enrollment.year2_count || 0;
-        const year3 = enrollment.year3_count || 0;
-        const year4 = enrollment.year4_count || 0;
-        const year5 = enrollment.year5_count || 0;
-        const year6 = enrollment.year6_count || 0;
+      const enrollment = currentEnrollments.find((e) => e.plan_type === type) || {};
+      const year1 = enrollment.year1_count || 0;
+      const year2 = enrollment.year2_count || 0;
+      const year3 = enrollment.year3_count || 0;
+      const year4 = enrollment.year4_count || 0;
+      const year5 = enrollment.year5_count || 0;
+      const year6 = enrollment.year6_count || 0;
 
-        return {
-          id: p.academic_program_id,
-          name: p.program_name,
-          degree: degreeMap[p.degree_level] || p.degree_level,
-          is_active: p.is_active, 
-          planType: type,
-          year1, year2, year3, year4, year5, year6,
-          total: year1 + year2 + year3 + year4 + year5 + year6,
-          enrollment_id: enrollment.enrollment_id || null,
-        };
+      return {
+        id: p.academic_program_id,
+        name: p.program_name,
+        degree: degreeMap[p.degree_level] || p.degree_level,
+        is_active: p.is_active,
+        planType: type,
+        year1, year2, year3, year4, year5, year6,
+        total: year1 + year2 + year3 + year4 + year5 + year6,
+        enrollment_id: enrollment.enrollment_id || null,
+      };
     };
     results.push(createRow("plan"));
     results.push(createRow("actual"));
@@ -106,44 +121,35 @@ export async function getEnrollmentData(currentBudgetId: number, semester: numbe
   return results;
 }
 
-// --- 3. บันทึกข้อมูล (รองรับ Semester) ---
+// --- 4. บันทึกข้อมูล (Refactor: ใช้ Year แทน ID) ---
 type UpdateItem = {
   programId: number;
   planType: "plan" | "actual";
-  updates: Record<string, number>; 
+  updates: Record<string, number>;
 };
 
-// ✅ เพิ่ม parameter: semester
-export async function bulkUpdateEnrollment(items: UpdateItem[], budgetYearId: number, semester: number) {
+export async function bulkUpdateEnrollment(items: UpdateItem[], year: number, semester: number) {
   try {
-    const budget = await prisma.revenueBudget.findUnique({
-      where: { revenue_budget_id: budgetYearId },
-      select: { budget_year: true }
-    });
-
-    if (!budget) throw new Error("Budget year not found");
-    const academicYear = budget.budget_year;
-
     await prisma.$transaction(
       items.map((item) => {
         return prisma.enrollmentInformation.upsert({
           where: {
-            academic_program_id_revenue_budget_id_plan_type_academic_year_semester: {
+            // ✅ ใช้ Constraint ใหม่ตาม Schema ที่แก้ไป (ตัด revenue_budget_id ทิ้ง)
+            academic_program_id_academic_year_semester_plan_type: {
               academic_program_id: item.programId,
-              revenue_budget_id: budgetYearId,
+              academic_year: year,        // ใช้ year ที่ส่งมาตรงๆ
+              semester: semester,
               plan_type: item.planType,
-              academic_year: academicYear,
-              semester: semester, // ✅ ใช้ Semester ที่ส่งมา
             }
           },
           update: item.updates,
           create: {
             academic_program_id: item.programId,
-            revenue_budget_id: budgetYearId,
+            academic_year: year,          // ใช้ year ที่ส่งมาตรงๆ
+            semester: semester,
             plan_type: item.planType,
-            academic_year: academicYear,
-            semester: semester, // ✅ ใช้ Semester ที่ส่งมา
-            year1_count: 0, year2_count: 0, year3_count: 0, 
+            // ❌ ไม่ต้องใส่ revenue_budget_id แล้ว
+            year1_count: 0, year2_count: 0, year3_count: 0,
             year4_count: 0, year5_count: 0, year6_count: 0,
             graduates: 0,
             ...item.updates,

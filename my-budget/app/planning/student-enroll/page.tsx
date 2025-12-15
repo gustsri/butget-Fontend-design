@@ -2,8 +2,8 @@
 import React, { useState, useEffect, memo } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import YearDropdown from "@/components/shared/year"; 
-import { ChevronDown, Loader2, Save, AlertCircle, FileText, ClipboardList, Clock, Calendar } from "lucide-react";
-import { getEnrollmentData, bulkUpdateEnrollment } from "./actions";
+import { ChevronDown, Loader2, Save, AlertCircle, FileText, ClipboardList, Clock } from "lucide-react";
+import { getEnrollmentData, bulkUpdateEnrollment } from "./actions"; // ✅ Import จากไฟล์กลาง
 
 // ==========================================
 // 1. Type Definitions
@@ -119,12 +119,12 @@ EnrollmentRow.displayName = "EnrollmentRow";
 // ==========================================
 export default function EnrollmentPage() {
   const [data, setData] = useState<StudentData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // เริ่มต้นไม่ต้องโหลด จนกว่าจะเลือกปี
+  
+  // ✅ เก็บ "เลขปี" (เช่น 2568) โดยตรง
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   
-  // ✅ เพิ่ม State สำหรับ Semester (1 หรือ 2)
   const [selectedSemester, setSelectedSemester] = useState<number>(1);
-
   const [editableCategory, setEditableCategory] = useState<"plan" | "actual">("plan");
   const [pendingChanges, setPendingChanges] = useState<Record<string, Record<string, number>>>({});
 
@@ -139,12 +139,12 @@ export default function EnrollmentPage() {
     if (!selectedYear) return;
     setIsLoading(true);
     try {
-      // ✅ ส่ง selectedSemester ไปด้วย
+      // ✅ ส่ง selectedYear (ตัวเลขปี) และ selectedSemester ไปตรงๆ
       const result = await getEnrollmentData(selectedYear, selectedSemester);
       setData(result as any);
       setPendingChanges({}); 
     } catch (error) {
-      console.error(error);
+      console.error("Fetch Error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -205,7 +205,7 @@ export default function EnrollmentPage() {
   };
 
   const handleSaveAll = async () => {
-    if (!selectedYear) return;
+    if (!selectedYear) return; // ต้องมีปีที่เลือก
     const itemsToUpdate = Object.entries(pendingChanges).map(([key, updates]) => {
       const [programIdStr, planType] = key.split("-");
       return {
@@ -217,17 +217,19 @@ export default function EnrollmentPage() {
 
     if (itemsToUpdate.length === 0) return;
     setIsLoading(true); 
-    // ✅ ส่ง selectedSemester ไปตอนบันทึก
+    
+    // ✅ ส่ง selectedYear (ตัวเลขปี) และ selectedSemester ไปบันทึก
     const result = await bulkUpdateEnrollment(itemsToUpdate, selectedYear, selectedSemester);
 
     if (result.success) {
       alert("บันทึกข้อมูลเรียบร้อย ✅");
       setPendingChanges({}); 
-      setIsLoading(false);
+      // ดึงข้อมูลใหม่เพื่อให้มั่นใจว่า update แล้ว
+      fetchData(); 
     } else {
       alert("เกิดข้อผิดพลาดในการบันทึก ❌");
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   const changeCount = Object.keys(pendingChanges).length;
@@ -246,7 +248,7 @@ export default function EnrollmentPage() {
               </div>
               
               <div className="flex items-center gap-4">
-                  {/* ✅ ตัวเลือก Semester */}
+                  {/* ตัวเลือก Semester */}
                   <div className="bg-blue-800/50 p-1 rounded-lg flex items-center border border-blue-700/50">
                       <button 
                         onClick={() => setSelectedSemester(1)}
@@ -262,7 +264,15 @@ export default function EnrollmentPage() {
                       </button>
                   </div>
 
-                  <YearDropdown onYearChange={(id) => setSelectedYear(id)} />
+                  {/* ✅ YearDropdown: ใช้ prop allowCreate={true} */}
+                  <YearDropdown 
+                    allowCreate={true}
+                    onYearChange={(id, yearVal) => {
+                        // Logic ใหม่: สนใจ yearVal (ตัวเลขปี) เพื่อนำไปใช้งาน
+                        // id อาจจะเป็น null ก็ได้ ถ้าพึ่งสร้างใหม่ แต่เราไม่แคร์แล้ว เพราะเราใช้ yearVal ในการ query
+                        setSelectedYear(yearVal);
+                    }} 
+                  />
               </div>
             </div>
 
@@ -272,8 +282,10 @@ export default function EnrollmentPage() {
                     <FileText className="w-5 h-5 text-blue-700" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-gray-700">ปีงบประมาณ {selectedYear ? 'ที่เลือก' : '...'} / เทอม {selectedSemester}</h2>
-                    <p className="text-xs text-gray-500">กรุณาเลือกประเภทข้อมูลที่ต้องการแก้ไข</p>
+                    <h2 className="text-sm font-bold text-gray-700">
+                        {selectedYear ? `ปีการศึกษา ${selectedYear} / เทอม ${selectedSemester}` : 'กรุณาเลือกปีงบประมาณ'}
+                    </h2>
+                    <p className="text-xs text-gray-500">เลือกประเภทข้อมูลที่ต้องการแก้ไข</p>
                   </div>
                </div>
 
