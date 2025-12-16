@@ -2,116 +2,131 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
+import { BudgetStatus } from "@prisma/client"; // อย่าลืม import Enum
+// ==========================================
+// 1. Helper Functions (ฟังก์ชันช่วยคำนวณ)
+// ==========================================
 
-// --- Helper: คำนวณรายรับค่าเทอมตามสูตร ---
-async function calculateTuitionRevenue(budgetYear: number) {
-  const prevYear = budgetYear - 1;
-  const programs = await prisma.academicProgram.findMany({
-    where: { is_active: true },
-    include: {
-      student_fees: { where: { is_active: true }, orderBy: { created_at: "desc" }, take: 1 },
-      EnrollmentInformation: { where: { academic_year: { in: [prevYear, budgetYear] } } },
-    },
-  });
-
-  let amountTerm1Prev = 0; let amountTerm2Prev = 0; let amountTerm1Curr = 0;
-
-  for (const prog of programs) {
-    const fee = Number(prog.student_fees[0]?.tuition_per_semester || 0);
-    const getStudentCount = (year: number, semester: number) => {
-      const actualData = prog.EnrollmentInformation.find(e => e.academic_year === year && e.semester === semester && e.plan_type === 'actual');
-      if ((actualData?.year1_count || 0) > 0) return getTotalStudents(actualData);
-      const planData = prog.EnrollmentInformation.find(e => e.academic_year === year && e.semester === semester && e.plan_type === 'plan');
-      return getTotalStudents(planData);
-    };
-    amountTerm1Prev += (getStudentCount(prevYear, 1) * fee * 2) / 5;
-    amountTerm2Prev += (getStudentCount(prevYear, 2) * fee);
-    amountTerm1Curr += (getStudentCount(budgetYear, 1) * fee * 3) / 5;
-  }
-  return { amountTerm1Prev, amountTerm2Prev, amountTerm1Curr };
-}
-
-function getTotalStudents(enroll: any) {
-  if (!enroll) return 0;
-  return (enroll.year1_count || 0) + (enroll.year2_count || 0) + (enroll.year3_count || 0) + (enroll.year4_count || 0) + (enroll.year5_count || 0) + (enroll.year6_count || 0);
-}
-
-// --- 🔥 Helper: คำนวณยอดเงินตามสูตร Excel (Updated) ---
+// ช่วยคำนวณยอดเงินรวมและ Net Amount ใหม่ทุกครั้งที่มีการแก้ไข
 async function recalculateBudgetTotal(budgetId: number) {
   const allItems = await prisma.revenueItem.findMany({
     where: { section: { revenue_budget_id: budgetId } },
     include: { section: true }
   });
 
-  // 1. คำนวณส่วนค่าเทอม (Section 1)
+  // 1. หา Section ค่าเทอม (ที่ Sort Order = 1 หรือชื่อขึ้นต้นด้วย 1.)
+  // เพื่อคำนวณ 35% และ ยอดคงเหลือ
   const tuitionItems = allItems.filter(i => i.section.sort_order === 1);
-  
-  // หา 3 เทอมหลัก
   const termItems = tuitionItems.filter(i => i.item_name.includes("ภาคเรียนที่"));
-  const tuitionSum = termItems.reduce((sum, item) => sum + item.amount.toNumber(), 0);
 
-  // คำนวณ 35%
+  // รวมยอด 3 เทอม
+  const tuitionSum = termItems.reduce((sum, item) => sum + Number(item.amount), 0);
+
+  // คำนวณหัก 35%
   const deduction35 = tuitionSum * 0.35;
   const deductionItem = tuitionItems.find(i => i.item_name.includes("35%"));
   if (deductionItem) {
-    await prisma.revenueItem.update({ where: { item_id: deductionItem.item_id }, data: { amount: deduction35 } });
+    await prisma.revenueItem.update({
+      where: { item_id: deductionItem.item_id },
+      data: { amount: deduction35 }
+    });
   }
 
-  // คำนวณ "คงเหลือ" (Net Tuition) -> Tuition Sum - 35%
+  // คำนวณคงเหลือ (เฉพาะส่วนค่าเทอม)
   const netTuition = tuitionSum - deduction35;
   const remainItem = tuitionItems.find(i => i.item_name.includes("คงเหลือ"));
   if (remainItem) {
-    await prisma.revenueItem.update({ where: { item_id: remainItem.item_id }, data: { amount: netTuition } });
+    await prisma.revenueItem.update({
+      where: { item_id: remainItem.item_id },
+      data: { amount: netTuition }
+    });
   }
 
-  // 2. คำนวณ "รวมรายรับ" (Total Revenue)
-  // สูตร: คงเหลือค่าเทอม + รายได้อื่นๆ (Section 1 ที่เหลือ + Section 2,3,4)
-  const otherIncomeItems = allItems.filter(i => {
-    // ไม่เอา Section ค่าใช้จ่ายท้ายตาราง (เช่น หักค่าสอนบริการ, ค่าจ้างพนักงาน)
-    const isExpenseSection = i.section.section_name.includes("หัก") || i.section.section_name.includes("ค่าจ้างพนักงาน") || i.section.section_name.includes("ค่าตอบแทน");
-    if (isExpenseSection) return false;
+  // 2. คำนวณยอดรวมทั้งโครงการ (Total Revenue)
+  // สูตร: (ยอดรวมทุกรายการที่ไม่ใช่รายการหัก)
+  const incomeItems = allItems.filter(i => !i.is_deduction && !i.item_name.startsWith("1.1")); // ไม่เอา Header
+  const totalRevenue = incomeItems.reduce((sum, item) => sum + Number(item.amount), 0);
 
-    // ใน Section 1 ไม่เอา 3 เทอม, ไม่เอา 35%, ไม่เอาคงเหลือ, ไม่เอา Header
-    if (i.section.sort_order === 1) {
-        if (i.item_name.includes("ภาคเรียนที่")) return false;
-        if (i.item_name.includes("35%")) return false;
-        if (i.item_name.includes("คงเหลือ")) return false;
-        if (i.item_name.startsWith("1.1")) return false; // Header
-    }
-    
-    // เอาเฉพาะที่ไม่ใช่ deduction และไม่ใช่ header
-    return !i.is_deduction && !i.item_name.startsWith("1.");
-  });
+  // 3. คำนวณยอดรายจ่าย (Expenses / Deductions) ที่ไม่ใช่ 35% (เพราะ 35% หักไปใน NetTuition แล้ว หรือจะคิดแยกก็ได้แล้วแต่ Logic)
+  // แต่เพื่อให้ง่าย: Net Amount = Total Revenue - Total Deductions
+  const deductionItems = allItems.filter(i => i.is_deduction);
+  const totalDeduction = deductionItems.reduce((sum, item) => sum + Number(item.amount), 0);
 
-  const totalOtherIncome = otherIncomeItems.reduce((sum, item) => sum + item.amount.toNumber(), 0);
-  const grandTotalRevenue = netTuition + totalOtherIncome;
-
-  // 3. คำนวณ "รายการหักจ่าย" (Expenses ท้ายตาราง)
-  // คือรายการที่เป็น Deduction ใน Section อื่นๆ (เช่น หักค่าสอนบริการ)
-  const expenseItems = allItems.filter(i => {
-     // เอา Deduction ที่ไม่ได้อยู่ใน Section 1 (เพราะ 35% หักไปแล้วใน NetTuition)
-     return i.is_deduction && i.section.sort_order !== 1;
-  });
-  const totalExpenses = expenseItems.reduce((sum, item) => sum + item.amount.toNumber(), 0);
-
-  // 4. สุทธิท้ายสุด
-  const finalNet = grandTotalRevenue - totalExpenses;
+  const finalNet = totalRevenue - totalDeduction;
 
   // อัปเดต Header
   await prisma.revenueBudget.update({
     where: { revenue_budget_id: budgetId },
-    data: { 
-      total_amount: grandTotalRevenue, // เก็บ "รวมรายรับ"
-      net_amount: finalNet             // เก็บ "รวมรายรับสุทธิ"
+    data: {
+      total_amount: totalRevenue,
+      net_amount: finalNet
     },
   });
 }
 
-// --- CRUD Actions ---
-export async function getRevenueData(budgetId: number) {
+// ช่วยดึงค่าเทอมจาก Enrollment มาคำนวณ (ใช้ตอนสร้างปีใหม่)
+async function calculateTuitionRevenue(budgetYear: number) {
+  const prevYear = budgetYear - 1;
+  const programs = await prisma.academicProgram.findMany({
+    where: { is_active: true },
+    include: {
+      EnrollmentInformation: {
+        where: { academic_year: { in: [prevYear, budgetYear] } }
+      },
+    },
+  });
+
+  let amountTerm1Prev = 0;
+  let amountTerm2Prev = 0;
+  let amountTerm1Curr = 0;
+
+  for (const prog of programs) {
+    // ✅ ใช้ tuition_per_semester จาก Program โดยตรง
+    const fee = Number(prog.tuition_per_semester || 0);
+
+    // ฟังก์ชันช่วยดึงจำนวนนักศึกษา (Prioritize Actual -> Plan)
+    const getStudentCount = (year: number, semester: number) => {
+      // 1. ลองหา Actual ก่อน (เผื่อเป็นปีเก่าที่มีข้อมูลจริงแล้ว)
+      const actual = prog.EnrollmentInformation.find(e =>
+        e.academic_year === year && e.semester === semester && e.plan_type === 'actual'
+      );
+      if (actual) {
+        return (actual.year1_count + actual.year2_count + actual.year3_count + actual.year4_count + actual.year5_count + actual.year6_count);
+      }
+
+      // 2. ถ้าไม่มี Actual ให้หา Plan (สำหรับปีปัจจุบัน/อนาคต)
+      const plan = prog.EnrollmentInformation.find(e =>
+        e.academic_year === year && e.semester === semester && e.plan_type === 'plan'
+      );
+      if (plan) {
+        return (plan.year1_count + plan.year2_count + plan.year3_count + plan.year4_count + plan.year5_count + plan.year6_count);
+      }
+
+      return 0; // ไม่พบข้อมูล
+    };
+
+    // คำนวณยอดเงินสะสม
+    const countTerm1Prev = getStudentCount(prevYear, 1);
+    const countTerm2Prev = getStudentCount(prevYear, 2);
+    const countTerm1Curr = getStudentCount(budgetYear, 1);
+
+    amountTerm1Prev += (countTerm1Prev * fee * 2) / 5;
+    amountTerm2Prev += (countTerm2Prev * fee); // เต็มเทอม
+    amountTerm1Curr += (countTerm1Curr * fee * 3) / 5;
+  }
+
+  return { amountTerm1Prev, amountTerm2Prev, amountTerm1Curr };
+}
+// ==========================================
+// 2. Export Actions (ฟังก์ชันหลักที่ Page เรียกใช้)
+// ==========================================
+
+// ✅ 2.1 ดึงข้อมูล (แก้ไขให้รับ year แทน ID)
+export async function getRevenueData(year: number) {
+  if (!year) return null;
+
   const budget = await prisma.revenueBudget.findUnique({
-    where: { revenue_budget_id: budgetId },
+    where: { budget_year: year },
     include: {
       sections: {
         orderBy: { sort_order: "asc" },
@@ -121,21 +136,142 @@ export async function getRevenueData(budgetId: number) {
       },
     },
   });
+
   if (!budget) return null;
+
   return {
     ...budget,
-    total_amount: budget.total_amount.toNumber(),
-    net_amount: budget.net_amount.toNumber(),
+    total_amount: Number(budget.total_amount),
+    net_amount: Number(budget.net_amount),
     sections: budget.sections.map((section) => ({
       ...section,
       items: section.items.map((item) => ({
         ...item,
-        amount: item.amount.toNumber(),
+        amount: Number(item.amount),
       })),
     })),
   };
 }
 
+// ✅ 2.2 สร้างแผนปีใหม่ (Clone & Seed Logic)
+// actions.ts (แก้ไขเฉพาะฟังก์ชัน createRevenuePlan)
+
+export async function createRevenuePlan(year: number) {
+  try {
+    // 1. เช็คก่อนว่ามี Header อยู่แล้วไหม
+    const existing = await prisma.revenueBudget.findUnique({
+      where: { budget_year: year },
+      include: { sections: true } // เช็คด้วยว่ามีไส้ในไหม
+    });
+
+    let budgetId: number;
+
+    if (existing) {
+      // ถ้ามีข้อมูล Sections อยู่แล้ว -> ถือว่าซ้ำ ให้แจ้งเตือน
+      if (existing.sections.length > 0) {
+        return { success: false, message: "ปีงบประมาณนี้มีข้อมูลครบถ้วนอยู่แล้ว" };
+      }
+      // **แก้ตรงนี้:** ถ้ามีแต่หัว (Empty Shell) -> ให้ใช้ ID เดิมเลย ไม่ต้อง return error
+      console.log(`Found empty budget header for year ${year}, proceeding to populate items...`);
+      budgetId = existing.revenue_budget_id;
+    } else {
+      // ถ้าไม่มีเลย -> สร้าง Header ใหม่
+      const newBudget = await prisma.revenueBudget.create({
+        data: { budget_year: year, status: "draft", total_amount: 0, net_amount: 0, is_active: true }
+      });
+      budgetId = newBudget.revenue_budget_id;
+    }
+
+    // --- จากจุดนี้ใช้ budgetId ในการสร้าง Sections/Items เหมือนเดิม ---
+
+    // 2. สร้าง Section 1 (ค่าเทอม)
+    const { amountTerm1Prev, amountTerm2Prev, amountTerm1Curr } = await calculateTuitionRevenue(year);
+    const prevYear = year - 1;
+    const shortYear = year % 100;
+    const shortPrev = prevYear % 100;
+
+    const sec1 = await prisma.revenueSection.create({
+      data: { revenue_budget_id: budgetId, section_name: "1. เงินค่าบำรุงการศึกษา และค่าธรรมเนียมต่าง ๆ", sort_order: 1 }
+    });
+
+    const sec1Items = [
+      { name: "1.1 ค่าบำรุงการศึกษาฯ (Header)", amount: 0 },
+      { name: `ภาคเรียนที่ 1/${prevYear} (ต.ค.-พ.ย.${shortPrev})`, amount: amountTerm1Prev },
+      { name: `ภาคเรียนที่ 2/${prevYear} (ธ.ค.${shortPrev}-เม.ย.${shortYear})`, amount: amountTerm2Prev },
+      { name: `ภาคเรียนที่ 1/${year} (ก.ค.-ก.ย.${shortYear})`, amount: amountTerm1Curr },
+      { name: "รายรับก่อนหักโอนให้หน่วยงานกลาง", amount: 0 },
+      { name: "หักให้งบกลาง 35%", amount: 0, is_deduction: true },
+      { name: "คงเหลือ", amount: 0 },
+      { name: "1.2 ค่าธรรมเนียมการรับนักศึกษา", amount: 0 },
+      { name: "1.3 ค่าใบรับรองการศึกษา / ค่าธรรมเนียมอื่นๆ", amount: 0 }
+    ];
+
+    for (let i = 0; i < sec1Items.length; i++) {
+      await prisma.revenueItem.create({
+        data: { section_id: sec1.section_id, item_name: sec1Items[i].name, amount: sec1Items[i].amount, is_deduction: sec1Items[i].is_deduction || false, sort_order: i + 1 }
+      });
+    }
+
+    // 3. Clone Section อื่นๆ (เหมือนเดิม)
+    const prevBudget = await prisma.revenueBudget.findUnique({
+      where: { budget_year: prevYear },
+      include: { sections: { include: { items: true } } }
+    });
+
+    if (prevBudget && prevBudget.sections.length > 0) {
+      for (const oldSec of prevBudget.sections) {
+        if (oldSec.sort_order === 1 || oldSec.section_name.startsWith("1.")) continue;
+
+        const newSec = await prisma.revenueSection.create({
+          data: { revenue_budget_id: budgetId, section_name: oldSec.section_name, sort_order: oldSec.sort_order }
+        });
+
+        for (const oldItem of oldSec.items) {
+          await prisma.revenueItem.create({
+            data: { section_id: newSec.section_id, item_name: oldItem.item_name, amount: 0, is_deduction: oldItem.is_deduction, sort_order: oldItem.sort_order }
+          });
+        }
+      }
+    } else {
+      // Fallback: Default Template (ถ้าไม่มีปีเก่าให้ Clone)
+      const defaultSecs = [
+        { name: "2. เงินรายได้จากงานบริการ", items: ["รายรับค่าลงทะเบียนจากประชุมวิชาการ"] },
+        { name: "3. เงินผลประโยชน์ (เช่น ค่าบำรุงโรงอาหาร)", items: ["รายได้จากการบริการโรงอาหาร"] },
+        { name: "4. เงินรายได้จากการรับบริจาค หรือ เงินอุดหนุน", items: ["รายได้จากการรับเงินสนับสนุนเพื่อการศึกษา"] },
+        { name: "หักค่าสอนบริการ", items: ["1. โอนเงินให้สำนักศึกษาทั่วไป", "2. โอนเงินให้คณะวิทยาศาสตร์"], isDeduction: true },
+        { name: "ค่าจ้างพนักงานสถาบันที่เปลี่ยนสถานภาพ...", items: ["1. โอนเงินให้ สนง.อธิการบดี", "2. โอนเงินเข้ากองทุนวิจัยสถาบัน"], isDeduction: true }
+      ];
+
+      let order = 2;
+      for (const dSec of defaultSecs) {
+        const newSec = await prisma.revenueSection.create({
+          data: { revenue_budget_id: budgetId, section_name: dSec.name, sort_order: order++ }
+        });
+        let itemOrder = 1;
+        for (const dItem of dSec.items) {
+          await prisma.revenueItem.create({
+            data: {
+              section_id: newSec.section_id,
+              item_name: dItem,
+              amount: 0,
+              is_deduction: dSec.isDeduction || false,
+              sort_order: itemOrder++
+            }
+          });
+        }
+      }
+    }
+
+    await recalculateBudgetTotal(budgetId);
+    revalidatePath("/planning/revenue");
+    return { success: true };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: "Error creating plan" };
+  }
+}
+
+// ✅ 2.3 เพิ่มหมวดหมู่ใหม่ (Add Section)
 export async function addRevenueSection(budgetId: number, name: string) {
   const lastSection = await prisma.revenueSection.findFirst({
     where: { revenue_budget_id: budgetId },
@@ -152,6 +288,7 @@ export async function addRevenueSection(budgetId: number, name: string) {
   return { success: true };
 }
 
+// ✅ 2.4 เพิ่มรายการย่อย (Add Item)
 export async function addRevenueItem(sectionId: number, name: string, isDeduction: boolean = false) {
   const lastItem = await prisma.revenueItem.findFirst({
     where: { section_id: sectionId },
@@ -170,6 +307,7 @@ export async function addRevenueItem(sectionId: number, name: string, isDeductio
   return { success: true };
 }
 
+// ✅ 2.5 ลบรายการ (Delete Item)
 export async function deleteRevenueItem(itemId: number, budgetId: number) {
   await prisma.revenueItem.delete({ where: { item_id: itemId } });
   await recalculateBudgetTotal(budgetId);
@@ -177,130 +315,90 @@ export async function deleteRevenueItem(itemId: number, budgetId: number) {
   return { success: true };
 }
 
-export async function bulkUpdateRevenueItems(items: { itemId: number; amount: number }[], budgetId: number) {
+// ✅ 2.6 บันทึกแก้ไขหลายรายการ (Bulk Update)
+export async function bulkUpdateRevenueItems(
+  items: { itemId: number; amount: number }[],
+  budgetId: number,
+  newStatus: BudgetStatus = 'draft' // Default เป็น draft
+) {
   try {
-    await prisma.$transaction(items.map((item) => prisma.revenueItem.update({ where: { item_id: item.itemId }, data: { amount: item.amount } })));
-    await recalculateBudgetTotal(budgetId);
-    revalidatePath("/planning/revenue");
-    return { success: true };
-  } catch (error) { return { success: false }; }
-}
+    // ใช้ Transaction เพื่อความชัวร์ (แก้ Items + แก้ Header พร้อมกัน)
+    await prisma.$transaction(async (tx) => {
 
-// --- Create Plan (Template ตรงตาม Excel) ---
-export async function createRevenuePlan(year: number) {
-  try {
-    const existing = await prisma.revenueBudget.findUnique({ where: { budget_year: year } });
-    if (existing) return { success: false, message: "ปีงบประมาณนี้มีอยู่แล้ว" };
-
-    const { amountTerm1Prev, amountTerm2Prev, amountTerm1Curr } = await calculateTuitionRevenue(year);
-    const prevYear = year - 1;       
-    const shortYear = year % 100;    
-    const shortPrev = prevYear % 100;
-
-    const budget = await prisma.revenueBudget.create({
-      data: { budget_year: year, status: "draft", total_amount: 0, net_amount: 0, is_active: true }
-    });
-
-    const sectionsData = [
-      {
-        name: "1. เงินค่าบำรุงการศึกษา และค่าธรรมเนียมต่าง ๆ และเงินอุดหนุนสมทบ",
-        items: [
-          { name: "1.1 ค่าบำรุงการศึกษาฯ (รวมเหมาจ่ายระดับบัณฑิตศึกษา)", amount: 0 }, // Header
-          { name: `ภาคเรียนที่ 1/${prevYear} (ต.ค.-พ.ย.${shortPrev}) - จำนวน 2 เดือน`, amount: amountTerm1Prev },
-          { name: `ภาคเรียนที่ 2/${prevYear} (ธ.ค.${shortPrev}-เม.ย.${shortYear}) - เต็มภาคการศึกษา`, amount: amountTerm2Prev },
-          { name: `ภาคเรียนที่ 1/${year} (ก.ค.-ก.ย.${shortYear}) - จำนวน 3 เดือน`, amount: amountTerm1Curr },
-          { name: "รายรับก่อนหักโอนให้หน่วยงานกลาง", amount: 0, type: 'head' }, // Label
-          { name: "หักให้งบกลาง 35%", amount: 0, is_deduction: true }, 
-          { name: "คงเหลือ", amount: 0 }, // Calculated
-          { name: "1.2 ค่าธรรมเนียมการรับนักศึกษา", amount: 0 },
-          { name: "1.3 ค่าใบรับรองการศึกษา / ค่าธรรมเนียมอื่นๆ", amount: 0 },
-        ]
-      },
-      {
-        name: "2. เงินรายได้จากงานบริการ",
-        items: [{ name: "รายรับค่าลงทะเบียนจากประชุมวิชาการ", amount: 0 }]
-      },
-      {
-        name: "3. เงินผลประโยชน์ (เช่น ค่าบำรุงโรงอาหาร)",
-        items: [{ name: "รายได้จากการบริการโรงอาหาร", amount: 0 }]
-      },
-      {
-        name: "4. เงินรายได้จากการรับบริจาค หรือ เงินอุดหนุน",
-        items: [{ name: "รายได้จากการรับเงินสนับสนุนเพื่อการศึกษา", amount: 0 }]
-      },
-      {
-        name: "หักค่าสอนบริการ",
-        items: [
-          { name: "1. โอนเงินให้สำนักศึกษาทั่วไป", amount: 0, is_deduction: true },
-          { name: "2. โอนเงินให้คณะวิทยาศาสตร์ เพื่อเป็นค่าสอนบริการ", amount: 0, is_deduction: true }
-        ]
-      },
-      {
-        name: "ค่าจ้างพนักงานสถาบันที่เปลี่ยนสถานภาพ (พนง.รายได้ -> พนง.งบประมาณ)",
-        items: [
-          { name: "1. โอนเงินให้ สนง.อธิการบดี (ค่าจ้างพนักงาน 12 อัตรา)", amount: 0, is_deduction: true },
-          { name: "2. โอนเงินเข้ากองทุนวิจัยสถาบัน (5 อัตรา 50%)", amount: 0, is_deduction: true }
-        ]
-      }
-    ];
-
-    for (let i = 0; i < sectionsData.length; i++) {
-      const sec = sectionsData[i];
-      const section = await prisma.revenueSection.create({
-        data: { revenue_budget_id: budget.revenue_budget_id, section_name: sec.name, sort_order: i + 1 }
-      });
-
-      for (let j = 0; j < sec.items.length; j++) {
-        const item = sec.items[j];
-        await prisma.revenueItem.create({
-          data: {
-            section_id: section.section_id,
-            item_name: item.name,
-            amount: item.amount,
-            is_deduction: item.is_deduction || false,
-            sort_order: j + 1,
-          }
+      // 1. อัปเดตยอดเงินใน Items
+      for (const item of items) {
+        await tx.revenueItem.update({
+          where: { item_id: item.itemId },
+          data: { amount: item.amount }
         });
       }
-    }
 
-    await recalculateBudgetTotal(budget.revenue_budget_id);
+      // 2. อัปเดต Header (เปลี่ยน Status และ +1 Version)
+      await tx.revenueBudget.update({
+        where: { revenue_budget_id: budgetId },
+        data: {
+          status: newStatus,
+          version: { increment: 1 } // ✅ บวก version ขึ้นทีละ 1 อัตโนมัติ
+        }
+      });
+    });
+
+    // 3. คำนวณยอดรวมใหม่ (เรียก Helper function เดิม)
+    await recalculateBudgetTotal(budgetId);
+
     revalidatePath("/planning/revenue");
-    return { success: true, newId: budget.revenue_budget_id };
+    return { success: true };
+
   } catch (error) {
     console.error(error);
-    return { success: false, message: "เกิดข้อผิดพลาดในการสร้างข้อมูล" };
+    return { success: false, message: "Failed to update" };
   }
 }
 
-export async function recalculateRevenueFromEnrollment(budgetId: number) {
+export async function refreshTuitionRevenue(budgetYear: number, budgetId: number) {
   try {
-    const budget = await prisma.revenueBudget.findUnique({ where: { revenue_budget_id: budgetId }, select: { budget_year: true } });
-    if (!budget) return { success: false };
+    // 1. คำนวณใหม่
+    const { amountTerm1Prev, amountTerm2Prev, amountTerm1Curr } = await calculateTuitionRevenue(budgetYear);
+    const prevYear = budgetYear - 1;
 
-    const { amountTerm1Prev, amountTerm2Prev, amountTerm1Curr } = await calculateTuitionRevenue(budget.budget_year);
-    const section1 = await prisma.revenueSection.findFirst({ where: { revenue_budget_id: budgetId, sort_order: 1 }, include: { items: { orderBy: { sort_order: 'asc' } } } });
+    // 2. อัปเดตลง Database (เฉพาะรายการที่เป็นค่าเทอม)
+    // ค้นหา Section 1
+    const section1 = await prisma.revenueSection.findFirst({
+      where: { revenue_budget_id: budgetId, sort_order: 1 }
+    });
 
     if (section1) {
-      const updates = [];
-      section1.items.forEach(item => {
-        if(item.item_name.includes("ภาคเรียนที่ 1") && item.item_name.includes("2 เดือน")) updates.push({id: item.item_id, val: amountTerm1Prev});
-        else if(item.item_name.includes("ภาคเรียนที่ 2")) updates.push({id: item.item_id, val: amountTerm2Prev});
-        else if(item.item_name.includes("ภาคเรียนที่ 1") && item.item_name.includes("3 เดือน")) updates.push({id: item.item_id, val: amountTerm1Curr});
-      });
-      await prisma.$transaction(updates.map(u => prisma.revenueItem.update({ where: { item_id: u.id }, data: { amount: u.val } })));
-      await recalculateBudgetTotal(budgetId);
-      revalidatePath("/planning/revenue");
-      return { success: true };
-    }
-    return { success: false, message: "ไม่พบโครงสร้างรายการ" };
-  } catch (error) { return { success: false }; }
-}
+      // Map ชื่อรายการกับค่าที่คำนวณได้
+      const updateMap = [
+        { key: `ภาคเรียนที่ 1/${prevYear}`, amount: amountTerm1Prev },
+        { key: `ภาคเรียนที่ 2/${prevYear}`, amount: amountTerm2Prev },
+        { key: `ภาคเรียนที่ 1/${budgetYear}`, amount: amountTerm1Curr },
+      ];
 
-export async function updateBudgetStatus(budgetId: number, status: "draft" | "submitted") {
-  try {
-    await prisma.revenueBudget.update({ where: { revenue_budget_id: budgetId }, data: { status: status } });
+      for (const item of updateMap) {
+        // หา Item ที่ชื่อตรงกัน (ใช้ contains เพราะชื่อเต็มอาจยาว)
+        const dbItem = await prisma.revenueItem.findFirst({
+          where: {
+            section_id: section1.section_id,
+            item_name: { contains: item.key }
+          }
+        });
+
+        if (dbItem) {
+          await prisma.revenueItem.update({
+            where: { item_id: dbItem.item_id },
+            data: { amount: item.amount }
+          });
+        }
+      }
+    }
+
+    // 3. คำนวณยอดรวมใหม่ (35%, Net Amount)
+    await recalculateBudgetTotal(budgetId);
     revalidatePath("/planning/revenue");
     return { success: true };
-  } catch (error) { return { success: false }; }
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: "Failed to recalculate" };
+  }
 }
