@@ -271,6 +271,47 @@ export async function createRevenuePlan(year: number) {
   }
 }
 
+export async function updateRevenueItemName(itemId: number, newName: string) {
+  try {
+    await prisma.revenueItem.update({
+      where: { item_id: itemId },
+      data: { item_name: newName }
+    });
+    revalidatePath("/planning/revenue");
+    return { success: true };
+  } catch (error) { return { success: false }; }
+}
+
+// 2. แก้ไขชื่อหมวดหมู่ (Section Name)
+export async function updateRevenueSectionName(sectionId: number, newName: string) {
+  try {
+    await prisma.revenueSection.update({
+      where: { section_id: sectionId },
+      data: { section_name: newName }
+    });
+    revalidatePath("/planning/revenue");
+    return { success: true };
+  } catch (error) { return { success: false }; }
+}
+
+// 3. ลบหมวดหมู่ (Delete Section) - *ระวัง: รายการข้างในจะหายหมด
+export async function deleteRevenueSection(sectionId: number, budgetId: number) {
+  try {
+    await prisma.revenueSection.delete({
+      where: { section_id: sectionId }
+    });
+    // คำนวณยอดรวมใหม่ด้วย เพราะรายการหายไปทั้งก้อน
+    // (ต้อง import recalculateBudgetTotal หรือ copy มาไว้ในไฟล์นี้)
+    await recalculateBudgetTotal(budgetId); 
+
+    // หมายเหตุ: ถ้า recalculateBudgetTotal อยู่ในไฟล์เดียวกันแล้ว เรียกใช้ได้เลย
+    // ถ้าแยกไฟล์ ต้องระวังเรื่อง import
+
+    revalidatePath("/planning/revenue");
+    return { success: true };
+  } catch (error) { return { success: false }; }
+}
+
 // ✅ 2.3 เพิ่มหมวดหมู่ใหม่ (Add Section)
 export async function addRevenueSection(budgetId: number, name: string) {
   const lastSection = await prisma.revenueSection.findFirst({

@@ -22,7 +22,10 @@ import {
     addRevenueSection,
     addRevenueItem,
     deleteRevenueItem,
-    refreshTuitionRevenue
+    refreshTuitionRevenue,
+    updateRevenueItemName,
+    updateRevenueSectionName,
+    deleteRevenueSection,
 } from "./actions";
 import RevenueTable from "@/components/revenue-plan/RevenueTable"; // ตรวจสอบ path ให้ตรง
 
@@ -149,7 +152,40 @@ export default function RevenuePage() {
         await refreshTuitionRevenue(currentYearVal, data.revenue_budget_id);
         await fetchData(currentYearVal);
     };
+    // แก้ไขชื่อรายการ
+    const handleUpdateItemName = async (itemId: number, newName: string) => {
+        // Optimistic Update ที่หน้าจอเพื่อให้ลื่นไหล
+        if (data) {
+            const newData = { ...data };
+            newData.sections.forEach((sec: any) => {
+                const item = sec.items.find((i: any) => i.item_id === itemId);
+                if (item) item.item_name = newName;
+            });
+            setData(newData);
+        }
+        // ส่งไปแก้ที่ Server
+        await updateRevenueItemName(itemId, newName);
+    };
 
+    // แก้ไขชื่อหมวดหมู่
+    const handleUpdateSectionName = async (sectionId: number, newName: string) => {
+        if (data) {
+            const newData = { ...data };
+            const sec = newData.sections.find((s: any) => s.section_id === sectionId);
+            if (sec) sec.section_name = newName;
+            setData(newData);
+        }
+        await updateRevenueSectionName(sectionId, newName);
+    };
+
+    // ลบหมวดหมู่
+    const handleDeleteSection = async (sectionId: number) => {
+        if (!confirm("⚠️ คำเตือน: การลบหมวดหมู่จะทำให้รายการย่อยทั้งหมดในหมวดนี้หายไป!\nคุณแน่ใจหรือไม่?")) return;
+
+        setIsLoading(true);
+        await deleteRevenueSection(sectionId, data.revenue_budget_id);
+        await fetchData(currentYearVal); // โหลดใหม่เพื่อคำนวณยอดเงินรวม
+    };
     // --- Render ---
 
     return (
@@ -277,10 +313,15 @@ export default function RevenuePage() {
                             <RevenueTable
                                 sections={data.sections}
                                 onUpdateAmount={handleUpdateAmount}
-                                // ✅ ส่ง Props ใหม่เข้าไปจัดการโครงสร้าง
                                 onAddSection={handleAddSection}
                                 onAddItem={handleAddItem}
                                 onDeleteItem={handleDeleteItem}
+
+                                // ✅ ส่ง Props ใหม่ไปให้ Table
+                                onUpdateItemName={handleUpdateItemName}
+                                onUpdateSectionName={handleUpdateSectionName}
+                                onDeleteSection={handleDeleteSection}
+
                                 readOnly={data.status === 'submitted'}
                             />
                         </div>
