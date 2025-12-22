@@ -1,12 +1,13 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import React from "react"; // ✅ ต้อง import React เพื่อใช้ React.Fragment
+import React from "react";
 
 interface RevenueTableProps {
   sections: any[];
   readOnly?: boolean;
   onUpdateAmount: (itemId: number, newVal: number) => void;
+  // ✅ ต้องมี Props เหล่านี้เพื่อรับฟังก์ชันจากหน้า Page
   onAddSection?: () => void;
   onAddItem?: (sectionId: number) => void;
   onDeleteItem?: (itemId: number) => void;
@@ -21,7 +22,6 @@ export default function RevenueTable({
     onDeleteItem 
 }: RevenueTableProps) {
   
-  // ป้องกันกรณี sections เป็น undefined/null
   if (!sections || sections.length === 0) {
       return <div className="p-8 text-center text-gray-400">ไม่มีรายการงบประมาณ</div>;
   }
@@ -38,7 +38,6 @@ export default function RevenueTable({
         </thead>
         <tbody className="divide-y divide-gray-100">
           {sections.map((section) => (
-            // ✅ แก้ไขตรงนี้: ใช้ React.Fragment พร้อมใส่ key
             <React.Fragment key={section.section_id}>
               
               {/* Section Header */}
@@ -59,7 +58,6 @@ export default function RevenueTable({
                     <input
                         type="number"
                         disabled={readOnly}
-                        // แปลงเป็น string และลบ leading zero
                         value={Number(item.amount).toString()} 
                         onChange={(e) => onUpdateAmount(item.item_id, parseFloat(e.target.value) || 0)}
                         className={`w-full text-right px-2 py-1 rounded border focus:ring-2 focus:ring-blue-500 outline-none transition-all
@@ -83,7 +81,7 @@ export default function RevenueTable({
                 </tr>
               ))}
 
-              {/* Add Item Button (ท้าย Section) */}
+              {/* ✅ ปุ่มเพิ่มรายการย่อย (Add Item Button) */}
               {!readOnly && onAddItem && (
                   <tr>
                       <td colSpan={3} className="px-6 py-2">
@@ -101,7 +99,7 @@ export default function RevenueTable({
         </tbody>
       </table>
 
-      {/* Add Section Button (ท้ายตาราง) */}
+      {/* ✅ ปุ่มเพิ่มหมวดหมู่ใหม่ (Add Section Button) - อยู่ท้ายตาราง */}
       {!readOnly && onAddSection && (
           <div className="p-4 border-t border-gray-200 bg-gray-50/50 flex justify-center">
               <button 
