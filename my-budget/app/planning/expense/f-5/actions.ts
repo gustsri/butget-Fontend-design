@@ -11,11 +11,20 @@ export type SaveBudgetParams = {
   itemId: number
   amountGov: number
   amountIncome: number
+  year: number // เพิ่ม field นี้
 }
 
 export async function saveBudgetRecord(data: SaveBudgetParams) {
   const CURRENT_YEAR = 2569 // ในระบบจริงควรดึงจาก Config หรือ Session
 
+  const existingRecord = await prisma.budgetRecord.findFirst({
+    where: {
+      allocation_id: data.allocationId,
+      item_id: data.itemId,
+      academic_year: data.year // ใช้ปีที่ส่งมา
+    }
+  })
+  
   try {
     // ใช้ upsert: ถ้ามีให้แก้ ถ้าไม่มีให้สร้าง
     // เนื่องจากเราไม่ได้ทำ Unique Key แบบ 3 ตัว (allocation+item+year) ไว้ใน Schema
@@ -52,7 +61,7 @@ export async function saveBudgetRecord(data: SaveBudgetParams) {
     // Revalidate เพื่อให้หน้าจอ update ข้อมูลล่าสุด (ถ้าจำเป็น)
     revalidatePath('/planning/expense/f-5')
     return { success: true }
-    
+
   } catch (error) {
     console.error('Error saving budget:', error)
     return { success: false, error: 'Failed to save data' }
