@@ -139,99 +139,143 @@ model EnrollmentInformation {
   @@unique([academic_program_id, academic_year, semester, plan_type])
 }
 
-// ---------------------------------------------------------
-// รายจ่าย
-// ---------------------------------------------------------
 
-enum BudgetCategory {
-  REVENUE
-  EXPENSE
+// =========================================================
+// GROUP 1: โครงสร้างองค์กร (Organization Structure)
+// เก็บโครงสร้าง "ด้าน -> แผนงาน -> งาน -> กิจกรรม"
+// =========================================================
+
+// Level 1-2: โครงสร้างระดับยุทธศาสตร์ (Strategic Level)
+// Level 1 = ด้าน (Side), Level 2 = แผนงาน (Plan)
+model StrategicPlan {
+  id        Int     @id @default(autoincrement())
+  code      String? // เช่น 09, 09007
+  name      String  // เช่น ด้านการพัฒนาประชากร, แผนงานจัดการศึกษา
+  level     Int     // 1 หรือ 2
+  is_active Boolean @default(true)
+
+  // Hierarchy (แผนงาน -> ด้าน)
+  parent_id Int?
+  parent    StrategicPlan?  @relation("StratHierarchy", fields: [parent_id], references: [id])
+  children  StrategicPlan[] @relation("StratHierarchy")
+
+  // ส่งต่อให้ระดับปฏิบัติการ
+  activities ProjectActivity[]
+
+  @@map("strategic_plans")
 }
 
-enum NodeType {
-  PLAN      // Level 1
-  JOB       // Level 2
-  ACTIVITY  // Level 3 (จุดตัด)
-  FUND      // Level 4
-  CATEGORY  // หมวด
-  ITEM      // รายการย่อย
+// Level 3-5: โครงสร้างระดับปฏิบัติการ (Operational Level)
+// Level 3 = งาน (Major), Level 4 = กิจกรรมรอง (Minor), Level 5 = กิจกรรมย่อย (Sub)
+model ProjectActivity {
+  id        Int     @id @default(autoincrement())
+  code      String? // เช่น 0101, 10, 211
+  name      String  // เช่น งานสนับสนุนฯ, กิจกรรมบริหารทั่วไป
+  level     Int     // 3, 4, หรือ 5
+  is_active Boolean @default(true)
+
+  // เชื่อมกลับไปหาแผนงานแม่ (Level 2)
+  plan_id   Int?
+  plan      StrategicPlan? @relation(fields: [plan_id], references: [id])
+
+  // Hierarchy (กิจกรรมย่อย -> กิจกรรมรอง -> งาน)
+  parent_id Int?
+  parent    ProjectActivity?  @relation("ActHierarchy", fields: [parent_id], references: [id])
+  children  ProjectActivity[] @relation("ActHierarchy")
+
+  // Link ไปตารางจับคู่กองทุน (Bridge Table)
+  fund_allocations ActivityFundAllocation[]
+
+  @@map("project_activities")
 }
 
-enum InputType {
-  HEADER     // โชว์เฉยๆ
-  INPUT      // กรอกเงินได้
+// =========================================================
+// GROUP 2: Master Data ทางการเงิน (Financial Master Data)
+// เก็บ "กองทุน" และ "ผังบัญชีรายจ่าย" (สร้างครั้งเดียวใช้ยาวๆ)
+// =========================================================
+
+// Level 6: กองทุน (Fund) - กระเป๋าเงิน
+model FundMaster {
+  id   Int    @id @default(autoincrement())
+  code String @unique // 0100, 0705
+  name String // กองทุนทั่วไป, กองทุนยุทธศาสตร์
+
+  allocations ActivityFundAllocation[]
+
+  @@map("fund_masters")
 }
 
-// ---------------------------------------------------------
-// 2. REFERENCE DATA: โครงสร้างรหัสงบประมาณ (เปลี่ยนชื่อแล้ว)
-// ---------------------------------------------------------
-model StructureCode {
-  id          Int            @id @default(autoincrement())
-  code        String?        // รหัส (09007, 510101)
-  name        String         // ชื่อรายการ
-  
-  category    BudgetCategory @default(EXPENSE)
-  node_type   NodeType       
-  input_type  InputType      @default(INPUT)
-  
-  level       Int            // 1, 2, 3...
-  is_active   Boolean        @default(true)
-  
-  // Hierarchy (Self-Relation)
-  parent_id   Int?
-  parent      StructureCode?  @relation("StructureHierarchy", fields: [parent_id], references: [id])
-  children    StructureCode[] @relation("StructureHierarchy")
+// Level 7: หมวดรายจ่าย (Budget Category)
+model BudgetCategory {
+  id   Int    @id @default(autoincrement())
+  code String @unique // 51000
+  name String // งบบุคลากร
 
-  // Relation ไปยัง Transaction
-  expense_items ExpenseItem[]
+  items ExpenseItemMaster[]
 
-  @@index([code])
-  @@index([category, is_active])
-  @@map("structure_codes") // ชื่อตารางใน DB
+  @@map("budget_categories")
 }
 
-// ---------------------------------------------------------
-// 3. TRANSACTION DATA: ข้อมูลการของบจริง
-// ---------------------------------------------------------
-model ExpenseBudget {
-  id              Int           @id @default(autoincrement())
-  academic_year   Int
-  
-  total_gov       Decimal       @default(0) @db.Decimal(15, 2)
-  total_income    Decimal       @default(0) @db.Decimal(15, 2)
-  
-  status          BudgetStatus  @default(draft)
-  
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
+// Level 8: รายการบัญชีรายจ่าย (Expense Item) - เมนูรายจ่ายมาตรฐาน
+model ExpenseItemMaster {
+  id   Int     @id @default(autoincrement())
+  code String? // 5101010017
+  name String  // ค่าจ้างลูกจ้าง, ค่าวัสดุ
 
-  items           ExpenseItem[]
+  // สังกัดหมวดไหน (Level 7)
+  category_id Int
+  category    BudgetCategory @relation(fields: [category_id], references: [id])
 
-  @@unique([academic_year])
-  @@map("expense_budgets")
+  records BudgetRecord[]
+
+  @@map("expense_item_masters")
 }
 
-model ExpenseItem {
-  id            Int           @id @default(autoincrement())
-  
-  budget_id     Int
-  budget        ExpenseBudget @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+// =========================================================
+// GROUP 3: การจับคู่และบันทึกข้อมูล (Transactions)
+// ส่วนที่ User ใช้งานจริงๆ ในแต่ละปี
+// =========================================================
 
-  // --- เปลี่ยนการเชื่อมโยงตรงนี้ ---
-  structure_id  Int?
-  structure     StructureCode? @relation(fields: [structure_id], references: [id])
-  
-  custom_name   String?       
-  
-  amount_gov    Decimal       @default(0) @db.Decimal(15, 2)
-  amount_income Decimal       @default(0) @db.Decimal(15, 2)
-  
-  parent_id     Int?
-  parent        ExpenseItem?  @relation("TransactionHierarchy", fields: [parent_id], references: [id])
-  children      ExpenseItem[] @relation("TransactionHierarchy")
+// Table 5 (Mapping): การจัดสรรกองทุน
+// ทำหน้าที่: บอกว่า "กิจกรรมนี้... มีสิทธิ์ใช้กองทุนอะไรบ้าง"
+model ActivityFundAllocation {
+  id Int @id @default(autoincrement())
 
-  description   String?       @db.Text
+  // 1. กิจกรรมไหน? (จาก Group 1)
+  activity_id Int
+  activity    ProjectActivity @relation(fields: [activity_id], references: [id])
 
-  @@index([budget_id])
-  @@map("expense_items")
+  // 2. กองทุนอะไร? (จาก Group 2)
+  fund_id Int
+  fund    FundMaster @relation(fields: [fund_id], references: [id])
+
+  // เตรียมที่ว่างไว้ใส่ตัวเงิน
+  budget_records BudgetRecord[]
+
+  @@unique([activity_id, fund_id]) // ป้องกันกิจกรรมเดิมจับคู่กองทุนเดิมซ้ำ
+  @@map("activity_fund_allocations")
+}
+
+// Table 6 (Record): ตารางบันทึกตัวเงิน
+// ทำหน้าที่: "ที่ กิจกรรม+กองทุน นี้... จ่ายค่า รายการนี้... เป็นเงิน xxx บาท"
+model BudgetRecord {
+  id            Int @id @default(autoincrement())
+  academic_year Int // ปีงบประมาณ 2569
+
+  // 1. Context: จ่ายภายใต้ กิจกรรม+กองทุน ไหน?
+  allocation_id Int
+  allocation    ActivityFundAllocation @relation(fields: [allocation_id], references: [id])
+
+  // 2. Item: จ่ายค่าอะไร? (Link ไปบัญชีมาตรฐาน)
+  item_id Int
+  item    ExpenseItemMaster @relation(fields: [item_id], references: [id])
+
+  // 3. Amount: จำนวนเงิน
+  amount_gov    Decimal @default(0) @db.Decimal(15, 2)
+  amount_income Decimal @default(0) @db.Decimal(15, 2)
+
+  updated_at DateTime @updatedAt
+
+  @@index([academic_year])
+  @@map("budget_records")
 }
