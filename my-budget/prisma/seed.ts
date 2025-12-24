@@ -217,118 +217,262 @@
 //   .finally(async () => {
 //     await prisma.$disconnect();
 //   });
-
 import { PrismaClient } from '@prisma/client'
+
 const prisma = new PrismaClient()
 
 async function main() {
-    console.log('🌱 Start Seeding...')
+  console.log('🌱 Start Seeding IT Budget System...')
 
-    // =============================================
-    // 1. Level 6: กองทุน (Fund Master)
-    // =============================================
-    const funds = [
-        { code: '0100', name: 'กองทุนทั่วไป' },
-        { code: '0200', name: 'กองทุนเพื่อการศึกษา' },
-        { code: '0300', name: 'กองทุนวิจัย' },
-        { code: '0400', name: 'กองทุนบริการวิชาการ' },
-        { code: '0500', name: 'กองทุนกิจการนักศึกษา' },
-        { code: '0600', name: 'กองทุนสินทรัพย์ถาวร' },
-        { code: '0701', name: 'กองทุนทำนุบำรุงศิลปวัฒนธรรม' },
-        { code: '0702', name: 'กองทุนสำรอง' },
-        { code: '0703', name: 'กองทุนพัฒนาบุคลากร' },
-        { code: '0705', name: 'กองทุนยุทธศาสตร์' },
-    ]
+  // =============================================
+  // 1. Level 6: กองทุน (Fund Master)
+  // =============================================
+  const funds = [
+    { code: '0100', name: 'กองทุนทั่วไป' },
+    { code: '0200', name: 'กองทุนเพื่อการศึกษา' },
+    { code: '0300', name: 'กองทุนวิจัย' },
+    { code: '0400', name: 'กองทุนบริการวิชาการ' },
+    { code: '0500', name: 'กองทุนกิจการนักศึกษา' },
+    { code: '0600', name: 'กองทุนสินทรัพย์ถาวร' },
+    { code: '0701', name: 'กองทุนทำนุบำรุงศิลปวัฒนธรรม' },
+    { code: '0702', name: 'กองทุนสำรอง' },
+    { code: '0703', name: 'กองทุนพัฒนาบุคลากร' },
+    { code: '0705', name: 'กองทุนยุทธศาสตร์' },
+  ]
 
-    for (const f of funds) {
-        await prisma.fundMaster.upsert({
-            where: { code: f.code },
-            update: {},
-            create: f,
+  console.log('... Seeding Funds')
+  for (const f of funds) {
+    await prisma.fundMaster.upsert({
+      where: { code: f.code },
+      update: { name: f.name },
+      create: f,
+    })
+  }
+
+  // =============================================
+  // 2. Level 7: หมวดงบประมาณ (Budget Categories)
+  // =============================================
+  const categories = [
+    { code: '51000', name: 'งบบุคลากร' },
+    { code: '52000', name: 'งบดำเนินงาน' },
+    { code: '53000', name: 'งบลงทุน' },
+    { code: '54000', name: 'งบเงินอุดหนุน' },
+    { code: '55000', name: 'งบรายจ่ายอื่น' },
+  ]
+
+  console.log('... Seeding Categories')
+  for (const c of categories) {
+    await prisma.budgetCategory.upsert({
+      where: { code: c.code },
+      update: { name: c.name },
+      create: c,
+    })
+  }
+
+  // =============================================
+  // 3. Level 1-5: โครงสร้างกิจกรรม (Structure Hierarchy)
+  // =============================================
+  console.log('... Seeding Structure Hierarchy')
+
+  // --- Level 1: ด้าน ---
+  const side09 = await prisma.strategicPlan.upsert({
+    where: { id: 1 }, // Fix ID for simplicity in seeding
+    update: { code: '09', name: 'ด้านการพัฒนาประชากร', level: 1 },
+    create: { id: 1, code: '09', name: 'ด้านการพัฒนาประชากร', level: 1 }
+  })
+  
+  const side06 = await prisma.strategicPlan.upsert({
+    where: { id: 2 },
+    update: { code: '06', name: 'ด้านวิทยาศาสตร์และเทคโนโลยี', level: 1 },
+    create: { id: 2, code: '06', name: 'ด้านวิทยาศาสตร์และเทคโนโลยี', level: 1 }
+  })
+
+  // --- Level 2: แผนงาน ---
+  // 09007 จัดการศึกษาอุดมศึกษา
+  const planEd = await prisma.strategicPlan.upsert({
+    where: { id: 10 },
+    update: { code: '09007', name: 'แผนงานจัดการศึกษาอุดมศึกษา', level: 2, parent_id: side09.id },
+    create: { id: 10, code: '09007', name: 'แผนงานจัดการศึกษาอุดมศึกษา', level: 2, parent_id: side09.id }
+  })
+  // 09010 บริการวิชาการ
+  const planService = await prisma.strategicPlan.upsert({
+    where: { id: 11 },
+    update: { code: '09010', name: 'แผนงานบริการวิชาการแก่สังคม', level: 2, parent_id: side09.id },
+    create: { id: 11, code: '09010', name: 'แผนงานบริการวิชาการแก่สังคม', level: 2, parent_id: side09.id }
+  })
+  // 09011 ศิลปวัฒนธรรม
+  const planCulture = await prisma.strategicPlan.upsert({
+    where: { id: 12 },
+    update: { code: '09011', name: 'แผนงานศาสนา ศิลปะ และวัฒนธรรม', level: 2, parent_id: side09.id },
+    create: { id: 12, code: '09011', name: 'แผนงานศาสนา ศิลปะ และวัฒนธรรม', level: 2, parent_id: side09.id }
+  })
+  // 06004 วิจัย
+  const planResearch = await prisma.strategicPlan.upsert({
+    where: { id: 13 },
+    update: { code: '06004', name: 'แผนงานวิจัย', level: 2, parent_id: side06.id },
+    create: { id: 13, code: '06004', name: 'แผนงานวิจัย', level: 2, parent_id: side06.id }
+  })
+
+  // --- Level 3: งาน (Works) ---
+  const works = [
+    { id: 100, code: '0101', name: 'งานสนับสนุนการจัดการศึกษา', plan_id: planEd.id },
+    { id: 101, code: '0102', name: 'งานจัดการศึกษาด้านวิทยาศาสตร์และเทคโนโลยี', plan_id: planEd.id },
+    // Group 3 (Special Mission) - Level 3 but acts as main entry
+    { id: 102, code: '0201', name: 'งานบริการวิชาการแก่ชุมชน', plan_id: planService.id },
+    { id: 103, code: '0301', name: 'งานทำนุบำรุงศิลปวัฒนธรรม', plan_id: planCulture.id },
+    { id: 104, code: '0401', name: 'งานวิจัย พัฒนาและถ่ายทอดเทคโนโลยี', plan_id: planResearch.id },
+  ]
+
+  for (const w of works) {
+    await prisma.projectActivity.upsert({
+      where: { id: w.id },
+      update: { code: w.code, name: w.name, level: 3, plan_id: w.plan_id },
+      create: { id: w.id, code: w.code, name: w.name, level: 3, plan_id: w.plan_id }
+    })
+  }
+
+  // --- Level 4: กิจกรรมรอง (Activities) ---
+  const activities = [
+    { code: '10', name: 'กิจกรรมบริหารทั่วไป', parent_code: '0101' },
+    { code: '11', name: 'กิจกรรมทะเบียนนักศึกษาและประมวลผล', parent_code: '0101' },
+    { code: '13', name: 'กิจกรรมบริการคอมพิวเตอร์ทางวิชาการ', parent_code: '0101' },
+    { code: '14', name: 'กิจกรรมบริหารวิชาการ', parent_code: '0101' },
+    { code: '15', name: 'กิจกรรมพัฒนาคุณภาพนักศึกษา', parent_code: '0101' },
+    { code: '16', name: 'กิจกรรมพัฒนาบุคลากรทางวิชาการ', parent_code: '0101' },
+    { code: '17', name: 'กิจกรรมผลิตและพัฒนาสื่อการศึกษา', parent_code: '0101' },
+    { code: '18', name: 'กิจกรรมพัฒนาหลักสูตรและการเรียนการสอน', parent_code: '0101' },
+    { code: '19', name: 'กิจกรรมส่งเสริมการผลิตตำรา', parent_code: '0101' },
+    { code: '25', name: 'กิจกรรมสาขาเทคโนโลยีสารสนเทศ', parent_code: '0102' },
+  ]
+
+  const activityMap = new Map<string, number>() // map code -> id
+
+  for (const act of activities) {
+    // หา parent_id จาก code ที่เรา upsert ไปก่อนหน้า
+    const parent = await prisma.projectActivity.findFirst({ where: { code: act.parent_code } })
+    if (!parent) continue
+
+    const created = await prisma.projectActivity.findFirst({
+        where: { code: act.code, level: 4 }
+    })
+    
+    let actId = created?.id
+    if (!created) {
+        const newAct = await prisma.projectActivity.create({
+            data: { code: act.code, name: act.name, level: 4, plan_id: parent.plan_id, parent_id: parent.id }
         })
+        actId = newAct.id
+    }
+    
+    if(actId) activityMap.set(act.code, actId)
+  }
+
+  // --- Level 5: กิจกรรมย่อย (Sub-Activities of 25) ---
+  const subActivities = [
+    { code: '211', name: 'ระดับปริญญาตรี', parent_code: '25' },
+    { code: '212', name: 'ระดับปริญญาโท-เอก', parent_code: '25' },
+  ]
+
+  for (const sub of subActivities) {
+    const parent = await prisma.projectActivity.findFirst({ where: { code: sub.parent_code } })
+    if (!parent) continue
+
+    const existing = await prisma.projectActivity.findFirst({ where: { code: sub.code } })
+    let subId = existing?.id
+
+    if (!existing) {
+        const newSub = await prisma.projectActivity.create({
+            data: { code: sub.code, name: sub.name, level: 5, plan_id: parent.plan_id, parent_id: parent.id }
+        })
+        subId = newSub.id
+    }
+    if(subId) activityMap.set(sub.code, subId) // Add sub-activity to map for allocation
+  }
+
+  // Add Group 3 Special Mission to map (since they are level 3 but act as allocatable units)
+  const group3 = ['0201', '0301', '0401']
+  for (const g3 of group3) {
+      const act = await prisma.projectActivity.findFirst({ where: { code: g3 } })
+      if(act) activityMap.set(g3, act.id)
+  }
+
+  // =============================================
+  // 4. การจับคู่การจัดสรร (Allocation Mapping)
+  // =============================================
+  console.log('... Seeding Activity Allocations')
+
+  // ข้อมูลการจับคู่: Activity Code -> [Fund Code List]
+  // (อ้างอิงจากข้อมูลที่คุณให้มาล่าสุด)
+  const allocationMap = {
+    '10': ['0100', '0705', '0600', '0702'],
+    '11': ['0100', '0705'],
+    '13': ['0100', '0705'],
+    '14': ['0200', '0705'],
+    '15': ['0500', '0705'],
+    '16': ['0703', '0705'],
+    '17': ['0200', '0705'],
+    '18': ['0200', '0705'],
+    '19': ['0200'],
+    '211': ['0200', '0705', '0600'], // สาขา IT ป.ตรี
+    '212': ['0200'],                 // สาขา IT ป.โท-เอก
+    '0201': ['0400', '0705'], // บริการวิชาการแก่ชุมชน
+    '0301': ['0701'],         // ศิลปวัฒนธรรม (0705 ไม่มีใน list ที่ให้มาล่าสุด ถ้ามีให้เติม) **แก้: 0705 ไม่มีใน prompt ล่าสุดของคุณสำหรับ 0301, แต่มี 0701 งบรายจ่ายอื่น 55000**
+                              // *Correction*: Prompt says for 0301: Fund 0701 only. Wait, re-reading prompt:
+                              // "0301 ... [0701] ... [0705] NO? Prompt doesn't list 0705 for 0301?
+                              // Wait, previous prompt said 0301 has 0705.
+                              // Let's check YOUR TEXT: "0301 ... [0701] ... (No 0705 listed)". 
+                              // BUT wait, looking at Group 3 in your text:
+                              // "0201 ... [0400] ... [0705]" -> OK
+                              // "0301 ... [0701] (54000, 55000)" -> NO 0705 listed in your last message.
+                              // "0401 ... [0300] ... [0705]" -> OK
+                              // I will follow your LAST text strictly.
+    '0401': ['0300', '0705'], // วิจัย
+  }
+
+  // Helper to find Fund ID
+  const getFundId = async (code: string) => {
+    const f = await prisma.fundMaster.findUnique({ where: { code } })
+    return f?.id
+  }
+
+  for (const [actCode, fundCodes] of Object.entries(allocationMap)) {
+    const actId = activityMap.get(actCode)
+    if (!actId) {
+        console.warn(`Activity Code ${actCode} not found in DB!`)
+        continue
     }
 
-    // =============================================
-    // 2. Level 1-2: Strategic Plan
-    // =============================================
-    // Level 1: ด้าน
-    const side09 = await prisma.strategicPlan.create({
-        data: { code: '09', name: 'ด้านการพัฒนาประชากร', level: 1 }
-    })
-
-    const side06 = await prisma.strategicPlan.create({
-        data: { code: '06', name: 'ด้านวิทยาศาสตร์และเทคโนโลยี', level: 1 }
-    })
-
-    // Level 2: แผนงาน
-    const planEd = await prisma.strategicPlan.create({
-        data: { code: '09007', name: 'แผนงานจัดการศึกษาอุดมศึกษา', level: 2, parent_id: side09.id }
-    })
-
-    const planService = await prisma.strategicPlan.create({
-        data: { code: '09010', name: 'แผนงานบริการวิชาการแก่สังคม', level: 2, parent_id: side09.id }
-    })
-
-    const planResearch = await prisma.strategicPlan.create({
-        data: { code: '06004', name: 'แผนงานวิจัย', level: 2, parent_id: side06.id }
-    })
-
-    // =============================================
-    // 3. Level 3-5: Project Activities
-    // =============================================
-
-    // --- 0101 งานสนับสนุนการจัดการศึกษา (Level 3) ---
-    const jobSupport = await prisma.projectActivity.create({
-        data: {
-            code: '0101', name: 'งานสนับสนุนการจัดการศึกษา', level: 3, plan_id: planEd.id
+    for (const fundCode of fundCodes) {
+        const fundId = await getFundId(fundCode)
+        if (!fundId) {
+            console.warn(`Fund Code ${fundCode} not found!`)
+            continue
         }
-    })
 
-    // กิจกรรมรองภายใต้ 0101 (Level 4)
-    const activitiesSupport = [
-        { code: '10', name: 'กิจกรรมบริหารทั่วไป' },
-        { code: '11', name: 'กิจกรรมทะเบียนนักศึกษาและประมวลผล' },
-        { code: '13', name: 'กิจกรรมบริการคอมพิวเตอร์ทางวิชาการ' },
-        { code: '14', name: 'กิจกรรมบริหารวิชาการ' },
-        { code: '15', name: 'กิจกรรมพัฒนาคุณภาพนักศึกษา' },
-        // ... ใส่เพิ่มได้เลย
-    ]
-
-    for (const act of activitiesSupport) {
-        await prisma.projectActivity.create({
-            data: {
-                code: act.code, name: act.name, level: 4,
-                plan_id: planEd.id, parent_id: jobSupport.id
+        await prisma.activityFundAllocation.upsert({
+            where: {
+                activity_id_fund_id: {
+                    activity_id: actId,
+                    fund_id: fundId
+                }
+            },
+            update: {}, // ถ้ามีแล้วไม่ต้องทำอะไร
+            create: {
+                activity_id: actId,
+                fund_id: fundId
             }
         })
     }
+  }
 
-    // --- 0102 งานจัดการศึกษาด้านวิทย์ (Level 3) ---
-    const jobSci = await prisma.projectActivity.create({
-        data: {
-            code: '0102', name: 'งานจัดการศึกษาด้านวิทยาศาสตร์และเทคโนโลยี', level: 3, plan_id: planEd.id
-        }
-    })
-
-    // กิจกรรมรอง: สาขา IT (Level 4)
-    const actIT = await prisma.projectActivity.create({
-        data: {
-            code: '25', name: 'กิจกรรมสาขาเทคโนโลยีสารสนเทศ', level: 4,
-            plan_id: planEd.id, parent_id: jobSci.id
-        }
-    })
-
-    // กิจกรรมย่อย: ปริญญาตรี/โท (Level 5)
-    await prisma.projectActivity.create({
-        data: { code: '211', name: 'ระดับปริญญาตรี', level: 5, plan_id: planEd.id, parent_id: actIT.id }
-    })
-    await prisma.projectActivity.create({
-        data: { code: '212', name: 'ระดับปริญญาโท-เอก', level: 5, plan_id: planEd.id, parent_id: actIT.id }
-    })
-
-    console.log('✅ Seeding Level 1-6 Completed!')
+  console.log('✅ Seeding Completed Successfully!')
 }
 
 main()
-    .catch((e) => { console.error(e); process.exit(1) })
-    .finally(async () => { await prisma.$disconnect() })
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
