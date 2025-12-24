@@ -13,6 +13,41 @@ export type SaveBudgetParams = {
   amountIncome: number
   year: number // เพิ่ม field นี้
 }
+// เพิ่มฟังก์ชันนี้สำหรับดึงข้อมูลเมื่อกด Expand
+export async function getBudgetDetail(activityId: number, year: number) {
+  try {
+    const activity = await prisma.projectActivity.findUnique({
+      where: { id: activityId }
+    })
+
+    const allocations = await prisma.activityFundAllocation.findMany({
+      where: { activity_id: activityId },
+      include: { fund: true },
+      orderBy: { fund: { code: 'asc' } }
+    })
+
+    const expenseItems = await prisma.expenseItemMaster.findMany({
+      include: { category: true },
+      orderBy: [{ category: { code: 'asc' } }, { code: 'asc' }]
+    })
+
+    const allocationIds = allocations.map(a => a.id)
+    const records = await prisma.budgetRecord.findMany({
+      where: {
+        allocation_id: { in: allocationIds },
+        academic_year: year
+      }
+    })
+
+    return {
+      success: true,
+      data: { activity, allocations, expenseItems, records }
+    }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Failed to fetch details' }
+  }
+}
 
 export async function saveBudgetRecord(data: SaveBudgetParams) {
   const CURRENT_YEAR = 2569 // ในระบบจริงควรดึงจาก Config หรือ Session

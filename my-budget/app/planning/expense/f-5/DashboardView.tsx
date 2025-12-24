@@ -1,104 +1,168 @@
 // app/planning/expense/f-5/DashboardView.tsx
 'use client'
 
-import React from 'react'
-import { ChevronRight, FolderOpen, Layers } from 'lucide-react'
+import React, { useState } from 'react'
+import { ChevronRight, ChevronDown, FolderOpen, Layers, Loader2 } from 'lucide-react'
+import { getBudgetDetail } from './actions'
+import F5TableView from './F5TableView'
 
-export default function DashboardView({ hierarchy, onSelect }: { hierarchy: any[], onSelect: (id: number) => void }) {
-    return (
-        <div className="space-y-12 pb-20">
-            {hierarchy.map((side) => (
-                <div key={side.id} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    {/* Level 1: ด้าน (Header ใหญ่) */}
-                    <div className="flex items-center gap-3 border-b-2 border-blue-600 pb-3 mb-6">
-                        <span className="bg-blue-600 text-white text-base font-bold font-mono px-3 py-1 rounded">
-                            {side.code}
-                        </span>
-                        <h3 className="text-2xl font-bold text-gray-800">{side.name}</h3>
-                    </div>
+type Props = {
+  hierarchy: any[]
+  currentYear: number // รับปีเข้ามาด้วยเพื่อส่งไป query
+}
 
-                    {/* Grid แสดงแผนงาน */}
-                    <div className="grid grid-cols-1 gap-8">
-                        {side.children.map((plan: any) => (
-                            <PlanSection key={plan.id} plan={plan} onSelect={onSelect} />
-                        ))}
-                    </div>
-                </div>
+export default function DashboardView({ hierarchy, currentYear }: Props) {
+  return (
+    <div className="space-y-8 pb-20 max-w-7xl mx-auto">
+      {hierarchy.map((side) => (
+        <div key={side.id} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+           {/* Level 1: ด้าน */}
+           <div className="flex items-center gap-3 border-b-2 border-blue-600 pb-2 mb-4">
+              <span className="bg-blue-600 text-white text-sm font-bold font-mono px-2 py-1 rounded">
+                {side.code}
+              </span>
+              <h3 className="text-xl font-bold text-gray-800">{side.name}</h3>
+           </div>
+
+           {/* List แผนงาน (เรียงลงมาทีละแถว) */}
+           <div className="flex flex-col gap-4">
+              {side.children.map((plan: any) => (
+                 <PlanSection key={plan.id} plan={plan} currentYear={currentYear} />
+              ))}
+           </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PlanSection({ plan, currentYear }: { plan: any, currentYear: number }) {
+  // กรองเฉพาะ Level 3 เพื่อตั้งต้น
+  const jobs = plan.activities.filter((act: any) => act.level === 3)
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+       {/* Level 2: แผนงาน Header */}
+       <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center gap-3">
+          <Layers className="w-5 h-5 text-gray-400" />
+          <span className="font-mono text-xs bg-white border border-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
+            {plan.code}
+          </span>
+          <span className="font-bold text-gray-700">{plan.name}</span>
+       </div>
+
+       <div className="p-0">
+          <div className="flex flex-col divide-y divide-gray-100">
+            {jobs.map((job: any) => (
+               <RecursiveRow key={job.id} node={job} level={3} currentYear={currentYear} />
             ))}
-        </div>
-    )
+            {jobs.length === 0 && (
+                <div className="p-4 text-gray-400 italic text-sm">ไม่มีรายการย่อย</div>
+            )}
+          </div>
+       </div>
+    </div>
+  )
 }
 
-function PlanSection({ plan, onSelect }: { plan: any, onSelect: (id: number) => void }) {
-    const jobs = plan.activities.filter((act: any) => act.level === 3)
-    return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            {/* Level 2: แผนงาน (Header รอง) */}
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-                <Layers className="w-5 h-5 text-gray-400" />
-                <span className="font-mono text-sm bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded shadow-sm">
-                    {plan.code}
-                </span>
-                <span className="font-bold text-gray-700 text-lg">{plan.name}</span>
-            </div>
+// Component แสดงแถวรายการ (รองรับการขยาย)
+function RecursiveRow({ node, level, currentYear }: { node: any, level: number, currentYear: number }) {
+  const hasChildren = node.children && node.children.length > 0
+  
+  // State สำหรับการ Expand
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [detailData, setDetailData] = useState<any>(null)
 
-            <div className="p-6">
-                <div className="grid gap-6">
-                    {plan.activities.map((job: any) => (
-                        <RecursiveNode key={job.id} node={job} onSelect={onSelect} level={3} />
-                    ))}
-                    {plan.activities.length === 0 && (
-                        <div className="text-gray-400 italic">ไม่มีรายการย่อย</div>
-                    )}
-                </div>
-            </div>
-        </div>
-    )
-}
-
-// ตัวจัดการ Node แบบ Recursive (งาน -> กิจกรรมรอง -> กิจกรรมย่อย)
-function RecursiveNode({ node, onSelect, level }: { node: any, onSelect: (id: number) => void, level: number }) {
-    const hasChildren = node.children && node.children.length > 0
-
-    // CASE A: ถ้ามีลูก -> แสดงเป็นหัวข้อ (Group Header) แล้ววนลูปแสดงลูกต่อ
+  // Function เมื่อกดที่แถว
+  const handleToggle = async () => {
     if (hasChildren) {
-        return (
-            <div className="space-y-3">
-                {/* หัวข้อ Group */}
-                <div className="flex items-center gap-2">
-                    <FolderOpen className={`text-blue-300 ${level === 3 ? 'w-5 h-5' : 'w-4 h-4'}`} />
-                    <span className="font-mono text-xs text-gray-400">{node.code}</span>
-                    <span className={`font-bold text-gray-700 ${level === 3 ? 'text-base' : 'text-sm'}`}>
-                        {node.name}
-                    </span>
-                </div>
-
-                {/* Container ลูก */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pl-4 border-l-2 border-gray-100 ml-2">
-                    {node.children.map((child: any) => (
-                        <RecursiveNode key={child.id} node={child} onSelect={onSelect} level={level + 1} />
-                    ))}
-                </div>
-            </div>
-        )
+      // กรณีมีลูก: แค่เปิด/ปิด เพื่อโชว์ลูก
+      setIsExpanded(!isExpanded)
+    } else {
+      // กรณีไม่มีลูก (Leaf): ต้องโหลดตารางงบประมาณ (F5TableView)
+      if (!isExpanded && !detailData) {
+        setIsLoading(true)
+        const res = await getBudgetDetail(node.id, currentYear)
+        if (res.success) {
+          setDetailData(res.data)
+        }
+        setIsLoading(false)
+      }
+      setIsExpanded(!isExpanded)
     }
+  }
 
-    // CASE B: ถ้าไม่มีลูก (Leaf Node) -> แสดงเป็น Card กดได้
-    return (
-        <button
-            onClick={() => onSelect(node.id)}
-            className="group flex flex-col items-start p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-500 hover:shadow-md hover:bg-blue-50/10 transition-all text-left w-full relative"
-        >
-            <div className="flex items-center justify-between w-full mb-2">
-                <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded group-hover:bg-blue-600 group-hover:text-white transition-colors">
+  // คำนวณ Indent ตาม Level
+  const paddingLeft = level === 3 ? 'pl-4' : level === 4 ? 'pl-12' : 'pl-20'
+  const bgColor = isExpanded ? 'bg-blue-50/50' : 'bg-white'
+
+  return (
+    <div className="flex flex-col">
+      {/* 1. ตัวแถว (Row Item) */}
+      <div 
+        onClick={handleToggle}
+        className={`
+          flex items-center justify-between py-3 pr-4 cursor-pointer transition-colors border-l-4
+          ${paddingLeft} ${bgColor} hover:bg-gray-50
+          ${isExpanded ? 'border-l-blue-600' : 'border-l-transparent'}
+        `}
+      >
+        <div className="flex items-center gap-3">
+            {/* Icon แสดงประเภท */}
+            {hasChildren ? (
+                <FolderOpen className={`text-blue-400 ${level === 3 ? 'w-5 h-5' : 'w-4 h-4'}`} />
+            ) : (
+                <div className={`w-2 h-2 rounded-full ${level === 3 ? 'bg-orange-400' : 'bg-green-400'}`}></div>
+            )}
+
+            {/* รหัสและชื่อ */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                <span className="font-mono text-xs font-medium text-gray-500 bg-gray-100 px-1.5 rounded w-fit">
                     {node.code}
                 </span>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-600 transition-transform group-hover:translate-x-1" />
+                <span className={`text-gray-700 ${level === 3 ? 'font-bold' : 'font-medium text-sm'}`}>
+                    {node.name}
+                </span>
             </div>
+        </div>
 
-            <span className="text-sm font-medium text-gray-800 group-hover:text-blue-700 line-clamp-2">
-                {node.name}
-            </span>
-        </button>
-    )
+        {/* Icon ลูกศรขวาสุด */}
+        <div className="text-gray-400">
+           {isLoading ? (
+             <Loader2 className="w-4 h-4 animate-spin" />
+           ) : isExpanded ? (
+             <ChevronDown className="w-5 h-5 text-blue-600" />
+           ) : (
+             <ChevronRight className="w-5 h-5" />
+           )}
+        </div>
+      </div>
+
+      {/* 2. ส่วนที่ขยายออกมา (Content Expanded) */}
+      {isExpanded && (
+        <div className="border-t border-gray-100 animate-in slide-in-from-top-2 duration-200">
+           
+           {/* CASE A: มีลูก -> วนลูปแสดงลูกต่อ */}
+           {hasChildren && (
+             <div className="flex flex-col divide-y divide-gray-100">
+                {node.children.map((child: any) => (
+                   <RecursiveRow key={child.id} node={child} level={level + 1} currentYear={currentYear} />
+                ))}
+             </div>
+           )}
+
+           {/* CASE B: ไม่มีลูก -> แสดงตาราง F5TableView */}
+           {!hasChildren && detailData && (
+             <div className="p-4 bg-gray-50 border-y border-gray-200 shadow-inner">
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                   {/* เรียกใช้ Table ตัวเดิม */}
+                   <F5TableView data={detailData} year={currentYear} />
+                </div>
+             </div>
+           )}
+        </div>
+      )}
+    </div>
+  )
 }
