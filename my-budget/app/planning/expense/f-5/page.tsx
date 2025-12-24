@@ -253,3 +253,185 @@
 //     </div>
 //   );
 // }
+import React from 'react'
+import { PrismaClient } from '@prisma/client'
+import Link from 'next/link'
+import { clsx } from 'clsx' // ถ้ายังไม่มีให้ลง npm i clsx หรือใช้ template string ธรรมดา
+
+const prisma = new PrismaClient()
+
+// 1. Fetch เมนูด้านซ้าย (กิจกรรมทั้งหมด)
+async function getActivities() {
+  return await prisma.structureCode.findMany({
+    where: { 
+      node_type: 'ACTIVITY', // ดึงเฉพาะ level กิจกรรม
+      category: 'EXPENSE' 
+    },
+    orderBy: { code: 'asc' }
+  })
+}
+
+// 2. Fetch ข้อมูลตารางด้านขวา (เฉพาะกิจกรรมที่เลือก)
+async function getBudgetItems(activityId: number | undefined) {
+  if (!activityId) return []
+
+  // Logic: ดึงลูกๆ ของ Activity ID นี้
+  // (ในความจริงต้องดึงจาก ExpenseItem แต่ช่วง Dev ใช้ StructureCode ไปก่อนตามที่คุยกัน)
+  const activityNode = await prisma.structureCode.findUnique({
+    where: { id: activityId },
+    include: {
+        children: { // Level 4 (Fund)
+            include: {
+                children: { // Level 5 (Category)
+                    include: {
+                        children: { // Level 6 (Item Header)
+                             include: {
+                                children: true // Level 7 (Leaf Items) - จุดจบ
+                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+  })
+  
+  // หมายเหตุ: การใช้ include ซ้อนกันเยอะๆ แบบนี้เป็นแค่ตัวอย่าง 
+  // ในงานจริงเรามักจะเขียน Recursive Query หรือ Flat List แล้วมาทำ Tree ใน JS
+  return activityNode ? [activityNode] : []
+}
+
+
+// --- Main Page Component ---
+export default async function F5Page({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
+  // อ่านค่า ?activityId=... จาก URL
+  const selectedActivityId = searchParams.activityId 
+    ? parseInt(searchParams.activityId as string) 
+    : undefined
+
+  // Parallel Data Fetching
+  const activities = await getActivities()
+  const budgetData = await getBudgetItems(selectedActivityId)
+
+  return (
+    <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+      {/* --- LEFT SIDEBAR: รายชื่อกิจกรรม --- */}
+      <aside className="w-80 border-r border-gray-200 bg-gray-50 flex flex-col">
+        <div className="p-4 border-b border-gray-200 bg-white">
+          <h2 className="font-bold text-gray-700">รายการกิจกรรม (Activities)</h2>
+          <p className="text-xs text-gray-500">เลือกกิจกรรมเพื่อกรอกงบประมาณ</p>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {activities.map((act) => {
+            const isActive = selectedActivityId === act.id
+            return (
+              <Link
+                key={act.id}
+                href={`/planning/expense/f-5?activityId=${act.id}`}
+                className={clsx(
+                  "block px-3 py-2.5 rounded-md text-sm transition-colors",
+                  isActive 
+                    ? "bg-blue-100 text-blue-700 font-medium border border-blue-200" 
+                    : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  <span className="font-mono text-xs bg-gray-200 px-1 rounded mt-0.5">
+                    {act.code}
+                  </span>
+                  <span>{act.name}</span>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </aside>
+
+      {/* --- RIGHT CONTENT: ตารางงบประมาณ --- */}
+      <main className="flex-1 flex flex-col bg-white overflow-hidden">
+        {selectedActivityId ? (
+          <>
+            {/* Header ส่วนขวา */}
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center shadow-sm z-10">
+              <h1 className="text-xl font-bold text-gray-800">
+                {activities.find(a => a.id === selectedActivityId)?.name}
+              </h1>
+              <div className="space-x-2">
+                 <span className="text-sm text-gray-500 mr-2">Status: Draft</span>
+                 <button className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 text-sm">
+                    บันทึกข้อมูล
+                 </button>
+              </div>
+            </div>
+
+            {/* Table Area */}
+            <div className="flex-1 overflow-auto p-6">
+                {/* เรียกใช้ Component ตารางที่คุณทำไว้ หรือ Render ตรงนี้ */}
+                {/* ผมใส่ Placeholder ไว้ก่อน เพื่อให้เห็นภาพ */}
+                <BudgetTableTree data={budgetData} />
+            </div>
+          </>
+        ) : (
+          // Empty State (ยังไม่ได้เลือกกิจกรรม)
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+            <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            <p className="text-lg font-medium">กรุณาเลือกกิจกรรมทางด้านซ้าย</p>
+            <p className="text-sm">เพื่อเริ่มดำเนินการจัดทำงบรายจ่าย (F-5)</p>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+// --- Component ย่อยสำหรับ Render Tree (Recursive แบบง่าย) ---
+// หมายเหตุ: ของจริงควรแยกไฟล์
+function BudgetTableTree({ data }: { data: any[] }) {
+    if (!data || data.length === 0) return <div className="text-gray-500">ไม่พบรายการย่อย</div>
+
+    // Recursive function เพื่อ loop render children
+    const renderNode = (nodes: any[]) => {
+        return nodes.map((node) => (
+            <React.Fragment key={node.id}>
+                <tr className={node.node_type === 'HEADER' || node.input_type === 'HEADER' ? "bg-gray-50" : ""}>
+                    <td className="border p-2 font-mono text-sm align-top">{node.code}</td>
+                    <td className="border p-2 text-sm">
+                        <div style={{ paddingLeft: `${(node.level - 3) * 20}px` }} 
+                             className={node.input_type === 'HEADER' ? "font-semibold" : ""}>
+                            {node.name}
+                        </div>
+                    </td>
+                    <td className="border p-2 text-right">
+                        {node.input_type === 'INPUT' ? (
+                            <input className="w-full text-right border rounded px-1" placeholder="0.00" />
+                        ) : '-'}
+                    </td>
+                </tr>
+                {/* Recursive Call */}
+                {node.children && node.children.length > 0 && renderNode(node.children)}
+            </React.Fragment>
+        ))
+    }
+
+    return (
+        <table className="w-full border-collapse border border-gray-200">
+            <thead>
+                <tr className="bg-gray-100 text-gray-700">
+                    <th className="border p-2 w-32 text-left">รหัส</th>
+                    <th className="border p-2 text-left">รายการ</th>
+                    <th className="border p-2 w-40 text-right">จำนวนเงิน</th>
+                </tr>
+            </thead>
+            <tbody>
+                {renderNode(data)} 
+                {/* หมายเหตุ: data[0].children เพราะ node แรกคือกิจกรรมแม่ */}
+                {data[0]?.children ? renderNode(data[0].children) : null}
+            </tbody>
+        </table>
+    )
+}
