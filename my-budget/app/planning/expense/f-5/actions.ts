@@ -1,102 +1,60 @@
-// "use server";
+'use server'
 
-// import { prisma } from "@/lib/prisma"; // ปรับ path ให้ตรงกับโปรเจ็คคุณ
-// import { revalidatePath } from "next/cache";
+import { PrismaClient } from '@prisma/client'
+import { revalidatePath } from 'next/cache'
 
-// // Type definition เพื่อให้ Frontend เรียกใช้ได้ง่ายๆ
-// export type ExpenseRow = {
-//   structure_id: number;
-//   code: string | null;
-//   name: string;
-//   level: number;
-//   is_header: boolean;
-//   parent_id: number | null;
-//   item_id?: number;
-//   gov_amount: number;
-//   income_amount: number;
-// };
+const prisma = new PrismaClient()
 
-// export async function getExpenseData(year: number) {
-//   // 1. หา Budget ของปีนั้น ถ้าไม่มีให้สร้างใหม่ (Status: DRAFT)
-//   let budget = await prisma.expenseBudget.findFirst({
-//     where: { academic_year: year },
-//   });
+// Type สำหรับข้อมูลที่จะบันทึก
+export type SaveBudgetParams = {
+  allocationId: number
+  itemId: number
+  amountGov: number
+  amountIncome: number
+}
 
-//   if (!budget) {
-//     budget = await prisma.expenseBudget.create({
-//       data: { academic_year: year, status: "DRAFT" },
-//     });
-//   }
+export async function saveBudgetRecord(data: SaveBudgetParams) {
+  const CURRENT_YEAR = 2569 // ในระบบจริงควรดึงจาก Config หรือ Session
 
-//   // 2. ดึง Structure เฉพาะหมวด "EXPENSE_F5"
-//   const structures = await prisma.structureCode.findMany({
-//     where: {
-//       category: 'EXPENSE_F5' // <--- Key สำคัญ: กรองเฉพาะหมวดนี้
-//     },
-//     orderBy: { 
-//       id: 'asc' // เรียงตาม ID หรือ Code ตามต้องการ
-//     }, 
-//   });
+  try {
+    // ใช้ upsert: ถ้ามีให้แก้ ถ้าไม่มีให้สร้าง
+    // เนื่องจากเราไม่ได้ทำ Unique Key แบบ 3 ตัว (allocation+item+year) ไว้ใน Schema
+    // เราจะใช้ logic findFirst แล้วตัดสินใจแทน
 
-//   // 3. ดึง Items ที่เคยบันทึกไว้ของปีนี้
-//   const items = await prisma.expenseItem.findMany({
-//     where: { budget_id: budget.id },
-//   });
+    const existingRecord = await prisma.budgetRecord.findFirst({
+      where: {
+        allocation_id: data.allocationId,
+        item_id: data.itemId,
+        academic_year: CURRENT_YEAR
+      }
+    })
 
-//   // 4. Merge Data: เอา Structure ตั้ง แล้วเอาเงินมาแปะ (ถ้าไม่มีใส่ 0)
-//   const rows: ExpenseRow[] = structures.map((st) => {
-//     const matchItem = items.find((i) => i.structure_id === st.id);
-//     return {
-//       structure_id: st.id,
-//       code: st.code,
-//       name: st.name,
-//       level: st.level,
-//       is_header: st.is_header,
-//       parent_id: st.parent_id,
-//       item_id: matchItem?.id,
-//       gov_amount: matchItem ? Number(matchItem.gov_amount) : 0,
-//       income_amount: matchItem ? Number(matchItem.income_amount) : 0,
-//     };
-//   });
+    if (existingRecord) {
+      await prisma.budgetRecord.update({
+        where: { id: existingRecord.id },
+        data: {
+          amount_gov: data.amountGov,
+          amount_income: data.amountIncome
+        }
+      })
+    } else {
+      await prisma.budgetRecord.create({
+        data: {
+          academic_year: CURRENT_YEAR,
+          allocation_id: data.allocationId,
+          item_id: data.itemId,
+          amount_gov: data.amountGov,
+          amount_income: data.amountIncome
+        }
+      })
+    }
 
-//   return {
-//     budget_id: budget.id,
-//     status: budget.status,
-//     rows: rows,
-//   };
-// }
-
-// export async function saveExpenseItems(budgetId: number, items: { structure_id: number; gov: number; income: number }[]) {
-//   try {
-//     // ใช้ Transaction เพื่อความชัวร์ (ถ้าพัง ให้พังทั้งหมด ไม่บันทึกครึ่งๆ กลางๆ)
-//     await prisma.$transaction(
-//       items.map((item) => 
-//         prisma.expenseItem.upsert({
-//           where: {
-//             // *** ต้องระวัง: ใน schema.prisma ต้องมี @@unique([budget_id, structure_id]) ***
-//             budget_id_structure_id: { 
-//                budget_id: budgetId, 
-//                structure_id: item.structure_id 
-//             }
-//           },
-//           update: {
-//             gov_amount: item.gov,
-//             income_amount: item.income,
-//           },
-//           create: {
-//             budget_id: budgetId,
-//             structure_id: item.structure_id,
-//             gov_amount: item.gov,
-//             income_amount: item.income,
-//           }
-//         })
-//       )
-//     );
+    // Revalidate เพื่อให้หน้าจอ update ข้อมูลล่าสุด (ถ้าจำเป็น)
+    revalidatePath('/planning/expense/f-5')
+    return { success: true }
     
-//     revalidatePath("/expense"); 
-//     return { success: true };
-//   } catch (error) {
-//     console.error("Save Error:", error);
-//     return { success: false, error: "Failed to save data" };
-//   }
-// }
+  } catch (error) {
+    console.error('Error saving budget:', error)
+    return { success: false, error: 'Failed to save data' }
+  }
+}
