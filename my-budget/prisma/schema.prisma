@@ -8,7 +8,7 @@ datasource db {
 }
 
 // ==========================================
-// 1. Enums (ตัวเลือกต่างๆ)
+// 1. Enums
 // ==========================================
 enum DegreeLevel {
   bachelor
@@ -37,56 +37,40 @@ enum BudgetStatus {
 // ==========================================
 // 2. ส่วนจัดการงบประมาณรายรับ (Revenue)
 // ==========================================
-
-// ตารางปีงบประมาณ (Header)
 model RevenueBudget {
   revenue_budget_id Int          @id @default(autoincrement())
   budget_year       Int          @unique
-  
   total_amount      Decimal      @default(0) @db.Decimal(15, 2)
   net_amount        Decimal      @default(0) @db.Decimal(15, 2)
-  
   status            BudgetStatus @default(draft)
   version           Int          @default(1)
-  
   is_active         Boolean      @default(true)
   created_at        DateTime     @default(now())
   updated_at        DateTime     @updatedAt
-
-  // Relations
-  sections          RevenueSection[] 
+  sections          RevenueSection[]
 
   @@map("revenue_budgets")
 }
 
-// ตารางหมวดหมู่ (Section)
 model RevenueSection {
-  section_id        Int      @id @default(autoincrement())
+  section_id        Int           @id @default(autoincrement())
   revenue_budget_id Int
-  
   section_name      String
   sort_order        Int
-
-  // Relation
   budget            RevenueBudget @relation(fields: [revenue_budget_id], references: [revenue_budget_id], onDelete: Cascade)
-  items             RevenueItem[] 
+  items             RevenueItem[]
 
   @@map("revenue_sections")
 }
 
-// ตารางรายการย่อย (Item)
 model RevenueItem {
-  item_id           Int      @id @default(autoincrement())
-  section_id        Int
-  
-  item_name         String
-  amount            Decimal  @default(0) @db.Decimal(15, 2)
-  
-  sort_order        Int
-  is_deduction      Boolean  @default(false)
-  
-  // Relation
-  section           RevenueSection @relation(fields: [section_id], references: [section_id], onDelete: Cascade)
+  item_id      Int            @id @default(autoincrement())
+  section_id   Int
+  item_name    String
+  amount       Decimal        @default(0) @db.Decimal(15, 2)
+  sort_order   Int
+  is_deduction Boolean        @default(false)
+  section      RevenueSection @relation(fields: [section_id], references: [section_id], onDelete: Cascade)
 
   @@map("revenue_items")
 }
@@ -94,96 +78,74 @@ model RevenueItem {
 // ==========================================
 // 3. ส่วนข้อมูลการศึกษา (Academic & Enrollment)
 // ==========================================
-
 model AcademicProgram {
-  academic_program_id Int         @id @default(autoincrement())
-  program_name        String      @db.VarChar(255)
-  degree_level        DegreeLevel
-  program_type        ProgramType
-  tuition_per_semester Decimal    @default(0) @db.Decimal(12, 2)
-
-  is_active           Boolean     @default(true)
-  created_at          DateTime    @default(now())
-  updated_at          DateTime    @updatedAt
-
-  // Relations
+  academic_program_id   Int                     @id @default(autoincrement())
+  program_name          String                  @db.VarChar(255)
+  degree_level          DegreeLevel
+  program_type          ProgramType
+  tuition_per_semester  Decimal                 @default(0) @db.Decimal(12, 2)
+  is_active             Boolean                 @default(true)
+  created_at            DateTime                @default(now())
+  updated_at            DateTime                @updatedAt
   EnrollmentInformation EnrollmentInformation[]
 
-  @@map("academic_programs") 
+  @@map("academic_programs")
 }
 
 model EnrollmentInformation {
-  enrollment_id       Int      @id @default(autoincrement())
-  
-  academic_program_id Int     
-  academic_year       Int      
-  semester            Int      
-  
+  enrollment_id       Int             @id @default(autoincrement())
+  academic_program_id Int
+  academic_year       Int
+  semester            Int
   plan_type           PlanType
-  
-  year1_count         Int      @default(0)
-  year2_count         Int      @default(0)
-  year3_count         Int      @default(0)
-  year4_count         Int      @default(0)
-  year5_count         Int      @default(0)
-  year6_count         Int      @default(0)
-  graduates           Int      @default(0) 
-
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
-
-  // Relations
+  year1_count         Int             @default(0)
+  year2_count         Int             @default(0)
+  year3_count         Int             @default(0)
+  year4_count         Int             @default(0)
+  year5_count         Int             @default(0)
+  year6_count         Int             @default(0)
+  graduates           Int             @default(0)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
   program             AcademicProgram @relation(fields: [academic_program_id], references: [academic_program_id])
-  
-  @@map("enrollment_information")
-  @@unique([academic_program_id, academic_year, semester, plan_type])
-}
 
+  @@unique([academic_program_id, academic_year, semester, plan_type])
+  @@map("enrollment_information")
+}
 
 // =========================================================
 // GROUP 1: โครงสร้างองค์กร (Organization Structure)
-// เก็บโครงสร้าง "ด้าน -> แผนงาน -> งาน -> กิจกรรม"
 // =========================================================
-
-// Level 1-2: โครงสร้างระดับยุทธศาสตร์ (Strategic Level)
-// Level 1 = ด้าน (Side), Level 2 = แผนงาน (Plan)
 model StrategicPlan {
   id        Int     @id @default(autoincrement())
-  code      String? // เช่น 09, 09007
-  name      String  // เช่น ด้านการพัฒนาประชากร, แผนงานจัดการศึกษา
-  level     Int     // 1 หรือ 2
+  code      String?
+  name      String
+  level     Int
   is_active Boolean @default(true)
 
-  // Hierarchy (แผนงาน -> ด้าน)
   parent_id Int?
   parent    StrategicPlan?  @relation("StratHierarchy", fields: [parent_id], references: [id])
   children  StrategicPlan[] @relation("StratHierarchy")
 
-  // ส่งต่อให้ระดับปฏิบัติการ
   activities ProjectActivity[]
 
   @@map("strategic_plans")
 }
 
-// Level 3-5: โครงสร้างระดับปฏิบัติการ (Operational Level)
-// Level 3 = งาน (Major), Level 4 = กิจกรรมรอง (Minor), Level 5 = กิจกรรมย่อย (Sub)
 model ProjectActivity {
   id        Int     @id @default(autoincrement())
-  code      String? // เช่น 0101, 10, 211
-  name      String  // เช่น งานสนับสนุนฯ, กิจกรรมบริหารทั่วไป
-  level     Int     // 3, 4, หรือ 5
+  code      String?
+  name      String
+  level     Int
   is_active Boolean @default(true)
 
-  // เชื่อมกลับไปหาแผนงานแม่ (Level 2)
-  plan_id   Int?
-  plan      StrategicPlan? @relation(fields: [plan_id], references: [id])
+  plan_id Int?
+  plan    StrategicPlan? @relation(fields: [plan_id], references: [id])
 
-  // Hierarchy (กิจกรรมย่อย -> กิจกรรมรอง -> งาน)
   parent_id Int?
   parent    ProjectActivity?  @relation("ActHierarchy", fields: [parent_id], references: [id])
   children  ProjectActivity[] @relation("ActHierarchy")
 
-  // Link ไปตารางจับคู่กองทุน (Bridge Table)
   fund_allocations ActivityFundAllocation[]
 
   @@map("project_activities")
@@ -191,100 +153,91 @@ model ProjectActivity {
 
 // =========================================================
 // GROUP 2: Master Data ทางการเงิน (Financial Master Data)
-// เก็บ "กองทุน" และ "ผังบัญชีรายจ่าย" (สร้างครั้งเดียวใช้ยาวๆ)
 // =========================================================
-
-// Level 6: กองทุน (Fund) - กระเป๋าเงิน
 model FundMaster {
   id   Int    @id @default(autoincrement())
-  code String @unique // 0100, 0705
-  name String // กองทุนทั่วไป, กองทุนยุทธศาสตร์
+  code String @unique
+  name String
 
   allocations ActivityFundAllocation[]
+  records     BudgetRecord[]
 
   @@map("fund_masters")
 }
 
-// Level 7: หมวดรายจ่าย (Budget Category)
 model BudgetCategory {
   id   Int    @id @default(autoincrement())
-  code String @unique // 51000
-  name String // งบบุคลากร
+  code String @unique
+  name String
 
-  items ExpenseItemMaster[]
+  items   ExpenseItemMaster[]
+  records BudgetRecord[]
 
   @@map("budget_categories")
 }
 
-// Level 8: รายการบัญชีรายจ่าย (Expense Item) - เมนูรายจ่ายมาตรฐาน
+// ✅ แก้ไข: เพิ่ม parent_id และทำให้ code เป็น unique เพื่อรองรับ Seed
 model ExpenseItemMaster {
   id   Int     @id @default(autoincrement())
-  code String? // 5101010017
-  name String  // ค่าจ้างลูกจ้าง, ค่าวัสดุ
+  code String  @unique // จำเป็นต้องมี @unique เพื่อให้ค้นหาด้วย findUnique ได้
+  name String
 
-  // สังกัดหมวดไหน (Level 7)
   category_id Int
   category    BudgetCategory @relation(fields: [category_id], references: [id])
 
-  // เพิ่ม: ตัวกำหนดรูปแบบการกรอกข้อมูล
-  // simple = กรอกยอดเงินช่องเดียว (ค่าวัสดุ, ค่าตอบแทนทั่วไป)
-  // salary = กรอกละเอียด (อัตรา x เดือน, เงินเพิ่ม, ฯลฯ)
-  form_type   String  @default("simple")
+  // เพิ่ม Self-Relation เพื่อทำ Hierarchy (Tree)
+  parent_id Int?
+  parent    ExpenseItemMaster?  @relation("ExpenseHierarchy", fields: [parent_id], references: [id])
+  children  ExpenseItemMaster[] @relation("ExpenseHierarchy")
 
-  records BudgetRecord[]
+  form_type String         @default("simple")
+  records   BudgetRecord[]
 
   @@map("expense_item_masters")
 }
 
 // =========================================================
 // GROUP 3: การจับคู่และบันทึกข้อมูล (Transactions)
-// ส่วนที่ User ใช้งานจริงๆ ในแต่ละปี
 // =========================================================
-
-// Table 5 (Mapping): การจัดสรรกองทุน
-// ทำหน้าที่: บอกว่า "กิจกรรมนี้... มีสิทธิ์ใช้กองทุนอะไรบ้าง"
 model ActivityFundAllocation {
   id Int @id @default(autoincrement())
 
-  // 1. กิจกรรมไหน? (จาก Group 1)
   activity_id Int
   activity    ProjectActivity @relation(fields: [activity_id], references: [id])
 
-  // 2. กองทุนอะไร? (จาก Group 2)
   fund_id Int
   fund    FundMaster @relation(fields: [fund_id], references: [id])
 
-  // เตรียมที่ว่างไว้ใส่ตัวเงิน
   budget_records BudgetRecord[]
 
-  @@unique([activity_id, fund_id]) // ป้องกันกิจกรรมเดิมจับคู่กองทุนเดิมซ้ำ
+  @@unique([activity_id, fund_id])
   @@map("activity_fund_allocations")
 }
 
-// Table 6 (Record): ตารางบันทึกตัวเงิน
-// ทำหน้าที่: "ที่ กิจกรรม+กองทุน นี้... จ่ายค่า รายการนี้... เป็นเงิน xxx บาท"
 model BudgetRecord {
   id            Int @id @default(autoincrement())
-  academic_year Int // ปีงบประมาณ 2569
+  academic_year Int
 
-  // 1. Context: จ่ายภายใต้ กิจกรรม+กองทุน ไหน?
   allocation_id Int
   allocation    ActivityFundAllocation @relation(fields: [allocation_id], references: [id])
 
-  // 2. Item: จ่ายค่าอะไร? (Link ไปบัญชีมาตรฐาน)
   item_id Int
   item    ExpenseItemMaster @relation(fields: [item_id], references: [id])
 
-  // 3. Amount: จำนวนเงิน
-  amount_gov    Decimal @default(0) @db.Decimal(15, 2)
-  amount_income Decimal @default(0) @db.Decimal(15, 2)
+  // Fact Table fields for easy reporting
+  category_id Int
+  category    BudgetCategory @relation(fields: [category_id], references: [id])
 
-  // ✅ เพิ่ม: ช่องเก็บรายละเอียด JSON
-  // เช่น: { "old_rate": 15000, "new_rate": 16000, "increase": 900 }
+  fund_id Int
+  fund    FundMaster @relation(fields: [fund_id], references: [id])
+
+  amount_gov    Decimal  @default(0) @db.Decimal(15, 2)
+  amount_income Decimal  @default(0) @db.Decimal(15, 2)
   details       Json?
-  
-  updated_at DateTime @updatedAt
+  updated_at    DateTime @updatedAt
 
   @@index([academic_year])
+  @@index([category_id])
+  @@index([fund_id])
   @@map("budget_records")
 }
