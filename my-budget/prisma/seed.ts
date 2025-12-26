@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { expenseItemsData } from './data/expenseItems' // ✅ Import มาจากไฟล์แยก
 
 const prisma = new PrismaClient()
 
@@ -25,7 +26,7 @@ const DEFAULT_ALLOWED_CATEGORIES = ['52000']
 async function main() {
   console.log('🚀 Start Seeding Full IT Budget System...')
   const CURRENT_YEAR = 2569
-  
+
   // =====================================================================
   // 0. CLEANUP: ล้างข้อมูลเก่าก่อนเสมอ (ป้องกัน 06004 ซ้ำ)
   // =====================================================================
@@ -262,6 +263,47 @@ async function main() {
   }
 
   console.log('✅ Seeding Completed (Category View Mode)')
+}
+// =====================================================================
+// 5. MASTER DATA: เพิ่มรายการรายจ่าย (Level 8)
+// =====================================================================
+console.log('running... Seeding Expense Items from External File')
+
+const categories = await prisma.budgetCategory.findMany()
+const catMap = new Map(categories.map(c => [c.code, c.id]))
+
+// วนลูปข้อมูลที่ Import มา
+for (const item of expenseItemsData) {
+  const categoryId = catMap.get(item.catCode)
+
+  if (categoryId) {
+    // Logic เดิมเป๊ะ แค่ย้ายข้อมูลไปที่อื่น
+    const existing = await prisma.expenseItemMaster.findFirst({
+      where: { code: item.code }
+    })
+
+    if (existing) {
+      await prisma.expenseItemMaster.update({
+        where: { id: existing.id },
+        data: {
+          name: item.name,
+          form_type: item.formType,
+          category_id: categoryId // เผื่อมีการย้ายหมวด
+        }
+      })
+    } else {
+      await prisma.expenseItemMaster.create({
+        data: {
+          code: item.code,
+          name: item.name,
+          category_id: categoryId,
+          form_type: item.formType
+        }
+      })
+    }
+  } else {
+    console.warn(`⚠️ Warning: Category ${item.catCode} not found for item ${item.name}`)
+  }
 }
 
 main()

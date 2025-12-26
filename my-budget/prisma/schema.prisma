@@ -226,6 +226,11 @@ model ExpenseItemMaster {
   category_id Int
   category    BudgetCategory @relation(fields: [category_id], references: [id])
 
+  // เพิ่ม: ตัวกำหนดรูปแบบการกรอกข้อมูล
+  // simple = กรอกยอดเงินช่องเดียว (ค่าวัสดุ, ค่าตอบแทนทั่วไป)
+  // salary = กรอกละเอียด (อัตรา x เดือน, เงินเพิ่ม, ฯลฯ)
+  form_type   String  @default("simple")
+
   records BudgetRecord[]
 
   @@map("expense_item_masters")
@@ -274,6 +279,10 @@ model BudgetRecord {
   amount_gov    Decimal @default(0) @db.Decimal(15, 2)
   amount_income Decimal @default(0) @db.Decimal(15, 2)
 
+  // ✅ เพิ่ม: ช่องเก็บรายละเอียด JSON
+  // เช่น: { "old_rate": 15000, "new_rate": 16000, "increase": 900 }
+  details       Json?
+  
   updated_at DateTime @updatedAt
 
   @@index([academic_year])
