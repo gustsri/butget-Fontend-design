@@ -5,16 +5,15 @@ import { revalidatePath } from 'next/cache'
 
 const prisma = new PrismaClient()
 
-// Type สำหรับข้อมูลที่จะบันทึก
 export type SaveBudgetParams = {
   allocationId: number
   itemId: number
   amountGov: number
   amountIncome: number
-  year: number 
+  year: number
+  details?: any
 }
 
-// ฟังก์ชันสำหรับดึงข้อมูลเมื่อกด Expand (Accordion)
 export async function getBudgetDetail(activityId: number, year: number) {
   try {
     const activity = await prisma.projectActivity.findUnique({
@@ -33,10 +32,12 @@ export async function getBudgetDetail(activityId: number, year: number) {
     })
 
     const allocationIds = allocations.map(a => a.id)
+    
+    // ✅ จุดสำคัญ: ต้องประกาศตัวแปร rawRecords ตรงนี้
     const rawRecords = await prisma.budgetRecord.findMany({
       where: {
         allocation_id: { in: allocationIds },
-        academic_year: year // ✅ ใช้ปีที่ส่งมา
+        academic_year: year
       }
     })
     
@@ -44,7 +45,8 @@ export async function getBudgetDetail(activityId: number, year: number) {
     const records = rawRecords.map(rec => ({
       ...rec,
       amount_gov: rec.amount_gov.toNumber(),
-      amount_income: rec.amount_income.toNumber()
+      amount_income: rec.amount_income.toNumber(),
+      details: rec.details // ส่ง details กลับไปด้วย
     }))
 
     return {
@@ -58,14 +60,12 @@ export async function getBudgetDetail(activityId: number, year: number) {
 }
 
 export async function saveBudgetRecord(data: SaveBudgetParams) {
-  // ❌ ลบ const CURRENT_YEAR = 2569 ออก เพื่อไม่ให้เผลอใช้
-
   try {
     const existingRecord = await prisma.budgetRecord.findFirst({
       where: {
         allocation_id: data.allocationId,
         item_id: data.itemId,
-        academic_year: data.year // ✅ ใช้ปีที่ส่งมา (data.year)
+        academic_year: data.year
       }
     })
 
@@ -74,17 +74,19 @@ export async function saveBudgetRecord(data: SaveBudgetParams) {
         where: { id: existingRecord.id },
         data: {
           amount_gov: data.amountGov,
-          amount_income: data.amountIncome
+          amount_income: data.amountIncome,
+          details: data.details ?? undefined
         }
       })
     } else {
       await prisma.budgetRecord.create({
         data: {
-          academic_year: data.year, // ✅ ใช้ปีที่ส่งมา (data.year)
+          academic_year: data.year,
           allocation_id: data.allocationId,
           item_id: data.itemId,
           amount_gov: data.amountGov,
-          amount_income: data.amountIncome
+          amount_income: data.amountIncome,
+          details: data.details ?? undefined
         }
       })
     }

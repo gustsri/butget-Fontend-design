@@ -1,6 +1,6 @@
 import React from 'react'
 import { PrismaClient } from '@prisma/client'
-import ExpensePlannerClient from './ExpensePlannerClient' // ✅ Import ชื่อนี้
+import ExpensePlannerClient from './ExpensePlannerClient' // Import ชื่อนี้
 
 const prisma = new PrismaClient()
 
@@ -10,24 +10,25 @@ type PageProps = {
 
 export default async function F5Page({ searchParams }: PageProps) {
   const resolvedParams = await searchParams
+
   const currentYear = resolvedParams.year
     ? parseInt(resolvedParams.year as string)
     : 2569
 
-  // --- Dashboard Data: ดึงโครงสร้างทั้งหมดแบบ Tree ---
+  // --- 1. Dashboard Data ---
   const hierarchy = await prisma.strategicPlan.findMany({
     where: { level: 1 },
     include: {
       children: {
         include: {
           activities: {
-            where: { level: 3 }, // ดึงเฉพาะ Level 3 (งาน) เป็นตัวตั้งต้น
+            where: { level: 3 },
             orderBy: { code: 'asc' },
             include: {
-              children: { // Level 4
+              children: {
                 orderBy: { code: 'asc' },
                 include: {
-                  children: { // Level 5
+                  children: {
                     orderBy: { code: 'asc' }
                   }
                 }
@@ -41,8 +42,7 @@ export default async function F5Page({ searchParams }: PageProps) {
     orderBy: { code: 'asc' }
   })
 
-  // ✅ เรียกใช้ Component ให้ตรงกับชื่อที่ Import
-  // ตัด detailData ออก เพราะเราใช้ระบบกดแล้วโหลด (Accordion) แทนแล้ว
+  // ✅ เรียกใช้ ExpensePlannerClient (ไม่ต้องมี Wrapper ต่อท้าย)
   return (
     <ExpensePlannerClient
       currentYear={currentYear}

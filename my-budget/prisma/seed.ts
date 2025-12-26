@@ -1,26 +1,68 @@
 import { PrismaClient } from '@prisma/client'
-import { expenseItemsData } from './data/expenseItems' // ✅ Import มาจากไฟล์แยก
 
 const prisma = new PrismaClient()
 
 // =====================================================================
-// 1. CONFIGURATION: กติกาของกองทุน (Fund Rules)
-// ระบุว่ากองทุนรหัสนี้ "อนุญาต" ให้ใช้หมวดงบ (Category Code) ไหนบ้าง
+// 📦 DATA SECTION: ข้อมูลรายการรายจ่าย (Level 8)
 // =====================================================================
+type ExpenseItemSeed = {
+  catCode: string;
+  code: string;
+  name: string;
+  formType: string;
+};
+
+const expenseItemsData: ExpenseItemSeed[] = [
+  // --- 51000 งบบุคลากร ---
+  { catCode: '51000', code: '5101010017', name: 'ค่าจ้างลูกจ้างสัญญาจ้างพนักงาน (งบประมาณเงินรายได้)', formType: 'salary' },
+  { catCode: '51000', code: '5101010038', name: 'ค่าจ้างพนักงานสถาบันประเภทพิเศษ', formType: 'salary' },
+  { catCode: '51000', code: '5101010000', name: 'เงินเดือนและค่าจ้าง (ยอดรวม)', formType: 'simple' },
+
+  // --- 52000 งบดำเนินงาน ---
+  { catCode: '52000', code: '5101010010', name: 'ค่าล่วงเวลา', formType: 'simple' },
+  { catCode: '52000', code: '5104030201', name: 'ค่าเบี้ยประชุม', formType: 'simple' },
+  { catCode: '52000', code: '5104010203', name: 'ค่าจ้างเหมาบริการ', formType: 'simple' },
+  
+  // ... เพิ่มรายการอื่นๆ ได้ที่นี่ ...
+];
+
+
+// =====================================================================
+// 1. CONFIGURATION: กติกาของกองทุน (Fund Rules)
+// =====================================================================
+
+// กติกา 1: กองทุนนี้ อนุญาตให้ใช้ "หมวด" (Category) ไหนบ้าง?
 const FUND_RULES: Record<string, string[]> = {
-  '0100': ['51000', '52000', '54000', '55000'], // ทั่วไป: เกือบครบ
+  '0100': ['51000', '52000', '54000', '55000'], // ทั่วไป
   '0200': ['51000', '52000', '53000', '54000', '55000'], // เพื่อการศึกษา
   '0300': ['52000', '54000'],                   // วิจัย
   '0400': ['51000', '52000', '55000'],          // บริการวิชาการ
   '0500': ['52000', '54000', '55000'],          // กิจการนักศึกษา
-  '0600': ['52000', '53000'],                   // สินทรัพย์: ดำเนินงาน + ลงทุน
+  '0600': ['52000', '53000'],                   // สินทรัพย์ถาวร
   '0701': ['54000', '55000'],                   // ศิลปวัฒนธรรม
   '0702': ['52000'],                            // สำรอง
   '0703': ['52000', '54000'],                   // พัฒนาบุคลากร
-  '0705': ['54000'],                            // ยุทธศาสตร์: เฉพาะเงินอุดหนุน
+  '0705': ['54000'],                            // ยุทธศาสตร์
 }
 
-// Default ถ้าไม่เจอใน list ให้ใช้อะไรบ้าง
+// 🔥 กติกา 2 (ใหม่!): กองทุนนี้ อนุญาตให้ใช้ "รายการ" (Item Code) ไหนบ้าง?
+// - ใส่ 'ALL' แปลว่า อนุญาตทุกรายการในหมวดนั้น
+// - ใส่รหัสรายการ แปลว่า อนุญาตเฉพาะรหัสนั้นๆ
+const FUND_ITEM_WHITELIST: Record<string, string[]> = {
+  // กองทุนทั่วไป: ให้เห็นหมดทุกรายการ
+  '0100': ['ALL'], 
+
+  // กองทุนสินทรัพย์: ให้เห็นแค่ ยอดรวมงบลงทุน (53000) และ ยอดรวมดำเนินงาน (52000)
+  // (ค่าล่วงเวลา หรือ ค่าเบี้ยประชุม จะไม่โผล่มาที่นี่เพราะไม่ได้ใส่ไว้)
+  '0600': ['53000', '52000'], 
+
+  // กองทุนสำรอง: ให้เห็นแค่ยอดรวม (52000)
+  '0702': ['52000'],
+  
+  // กองทุนยุทธศาสตร์: ให้เห็นแค่ยอดรวมอุดหนุน (54000) และรายการย่อยบางตัว
+  '0705': ['54000', '5401020000'], // สมมติ
+}
+
 const DEFAULT_ALLOWED_CATEGORIES = ['52000']
 
 async function main() {
@@ -28,10 +70,9 @@ async function main() {
   const CURRENT_YEAR = 2569
 
   // =====================================================================
-  // 0. CLEANUP: ล้างข้อมูลเก่าก่อนเสมอ (ป้องกัน 06004 ซ้ำ)
+  // 0. CLEANUP
   // =====================================================================
   console.log('🧹 Cleaning old data...')
-  // เรียงลำดับการลบจากลูกไปหาพ่อ (เพื่อเลี่ยง Foreign Key constraint)
   await prisma.budgetRecord.deleteMany()
   await prisma.activityFundAllocation.deleteMany()
   await prisma.projectActivity.deleteMany()
@@ -40,17 +81,16 @@ async function main() {
   await prisma.budgetCategory.deleteMany()
   await prisma.fundMaster.deleteMany()
 
-  // Reset ID Sequence (เฉพาะ Postgres) เพื่อให้ ID เริ่มนับ 1 ใหม่สวยๆ
+  // Reset ID Sequence (ถ้าทำได้)
   try {
     await prisma.$executeRawUnsafe(`TRUNCATE TABLE "project_activities" RESTART IDENTITY CASCADE;`)
     await prisma.$executeRawUnsafe(`TRUNCATE TABLE "strategic_plans" RESTART IDENTITY CASCADE;`)
   } catch (e) {
-    console.log('⚠️ Skipping TRUNCATE (might not be Postgres or permission issue)')
+    console.log('⚠️ Skipping TRUNCATE')
   }
 
-
   // =====================================================================
-  // 1. MASTER DATA: กองทุน (Fund Master)
+  // 1. MASTER DATA: Funds
   // =====================================================================
   console.log('running... Seeding Funds')
   const funds = [
@@ -65,16 +105,14 @@ async function main() {
     { code: '0703', name: 'กองทุนพัฒนาบุคลากร' },
     { code: '0705', name: 'กองทุนยุทธศาสตร์' },
   ]
-
   for (const f of funds) {
     await prisma.fundMaster.create({ data: f })
   }
 
   // =====================================================================
-  // 2. MASTER DATA: หมวดงบ (Categories) & รายการ (Items)
+  // 2. MASTER DATA: Categories & Items (Level 7 & 8)
   // =====================================================================
   console.log('running... Seeding Budget Structure')
-
   const categoriesData = [
     { code: '51000', name: 'งบบุคลากร' },
     { code: '52000', name: 'งบดำเนินงาน' },
@@ -87,63 +125,76 @@ async function main() {
     const newCat = await prisma.budgetCategory.create({
       data: { code: cat.code, name: cat.name }
     })
-
-    // ✅ สร้าง Item ตัวเดียว ชื่อเดียวกับหมวด เพื่อใช้กรอกเงินระดับหมวด
+    // สร้าง Item "ยอดรวม" ประจำหมวด (รหัสเดียวกับหมวด)
     await prisma.expenseItemMaster.create({
       data: {
-        code: cat.code, // ใช้รหัสเดียวกับหมวดเลยก็ได้ หรือเติมต่อท้าย
-        name: `รวม${cat.name}`, // ชื่อรายการให้สื่อว่าเป็นยอดรวม
-        category_id: newCat.id
+        code: cat.code, // ใช้รหัสหมวดเป็นรหัส Item
+        name: `รวม${cat.name}`,
+        category_id: newCat.id,
+        form_type: 'simple'
       }
     })
   }
 
   // =====================================================================
-  // 3. ORGANIZATION: โครงสร้างองค์กร (Strategic -> Activities)
+  // 3. SEEDING EXPENSE ITEMS (จากตัวแปร expenseItemsData)
+  // =====================================================================
+  console.log('running... Seeding Expense Items from Internal Data')
+  
+  const categories = await prisma.budgetCategory.findMany()
+  const catMap = new Map(categories.map(c => [c.code, c.id]))
+
+  for (const item of expenseItemsData) {
+    const categoryId = catMap.get(item.catCode)
+
+    if (categoryId) {
+      const existing = await prisma.expenseItemMaster.findFirst({
+         where: { code: item.code }
+      })
+      
+      if (existing) {
+         await prisma.expenseItemMaster.update({
+            where: { id: existing.id },
+            data: { 
+                name: item.name, 
+                form_type: item.formType,
+                category_id: categoryId
+            }
+         })
+      } else {
+         await prisma.expenseItemMaster.create({
+            data: {
+                code: item.code,
+                name: item.name,
+                category_id: categoryId,
+                form_type: item.formType
+            }
+         })
+      }
+    } else {
+        console.warn(`⚠️ Warning: Category ${item.catCode} not found for item ${item.name}`)
+    }
+  }
+
+  // =====================================================================
+  // 4. ORGANIZATION
   // =====================================================================
   console.log('running... Seeding Organization Hierarchy')
+  
+  const side09 = await prisma.strategicPlan.create({ data: { code: '09', name: 'ด้านการพัฒนาประชากร', level: 1 } })
+  const side06 = await prisma.strategicPlan.create({ data: { code: '06', name: 'ด้านวิทยาศาสตร์และเทคโนโลยี', level: 1 } })
+  
+  const planEd = await prisma.strategicPlan.create({ data: { code: '09007', name: 'แผนงานจัดการศึกษาอุดมศึกษา', level: 2, parent_id: side09.id } })
+  const planService = await prisma.strategicPlan.create({ data: { code: '09010', name: 'แผนงานบริการวิชาการแก่สังคม', level: 2, parent_id: side09.id } })
+  const planCulture = await prisma.strategicPlan.create({ data: { code: '09011', name: 'แผนงานศาสนา ศิลปะ และวัฒนธรรม', level: 2, parent_id: side09.id } })
+  const planResearch = await prisma.strategicPlan.create({ data: { code: '06004', name: 'แผนงานวิจัย', level: 2, parent_id: side06.id } })
 
-  // --- Level 1: ด้าน ---
-  const side09 = await prisma.strategicPlan.create({
-    data: { code: '09', name: 'ด้านการพัฒนาประชากร', level: 1 }
-  })
-  const side06 = await prisma.strategicPlan.create({
-    data: { code: '06', name: 'ด้านวิทยาศาสตร์และเทคโนโลยี', level: 1 }
-  })
+  const workSupport = await prisma.projectActivity.create({ data: { code: '0101', name: 'งานสนับสนุนการจัดการศึกษา', level: 3, plan_id: planEd.id } })
+  const workSci = await prisma.projectActivity.create({ data: { code: '0102', name: 'งานจัดการศึกษาด้านวิทยาศาสตร์และเทคโนโลยี', level: 3, plan_id: planEd.id } })
+  const workService = await prisma.projectActivity.create({ data: { code: '0201', name: 'งานบริการวิชาการแก่ชุมชน', level: 3, plan_id: planService.id } })
+  const workCulture = await prisma.projectActivity.create({ data: { code: '0301', name: 'งานทำนุบำรุงศิลปวัฒนธรรม', level: 3, plan_id: planCulture.id } })
+  const workResearch = await prisma.projectActivity.create({ data: { code: '0401', name: 'งานวิจัย พัฒนาและถ่ายทอดเทคโนโลยี', level: 3, plan_id: planResearch.id } })
 
-  // --- Level 2: แผนงาน ---
-  const planEd = await prisma.strategicPlan.create({
-    data: { code: '09007', name: 'แผนงานจัดการศึกษาอุดมศึกษา', level: 2, parent_id: side09.id }
-  })
-  const planService = await prisma.strategicPlan.create({
-    data: { code: '09010', name: 'แผนงานบริการวิชาการแก่สังคม', level: 2, parent_id: side09.id }
-  })
-  const planCulture = await prisma.strategicPlan.create({
-    data: { code: '09011', name: 'แผนงานศาสนา ศิลปะ และวัฒนธรรม', level: 2, parent_id: side09.id }
-  })
-  const planResearch = await prisma.strategicPlan.create({
-    data: { code: '06004', name: 'แผนงานวิจัย', level: 2, parent_id: side06.id }
-  })
-
-  // --- Level 3: งาน (Works) ---
-  const workSupport = await prisma.projectActivity.create({
-    data: { code: '0101', name: 'งานสนับสนุนการจัดการศึกษา', level: 3, plan_id: planEd.id }
-  })
-  const workSci = await prisma.projectActivity.create({
-    data: { code: '0102', name: 'งานจัดการศึกษาด้านวิทยาศาสตร์และเทคโนโลยี', level: 3, plan_id: planEd.id }
-  })
-  // งานที่เป็นภารกิจพิเศษ (Group 3)
-  const workService = await prisma.projectActivity.create({
-    data: { code: '0201', name: 'งานบริการวิชาการแก่ชุมชน', level: 3, plan_id: planService.id }
-  })
-  const workCulture = await prisma.projectActivity.create({
-    data: { code: '0301', name: 'งานทำนุบำรุงศิลปวัฒนธรรม', level: 3, plan_id: planCulture.id }
-  })
-  const workResearch = await prisma.projectActivity.create({
-    data: { code: '0401', name: 'งานวิจัย พัฒนาและถ่ายทอดเทคโนโลยี', level: 3, plan_id: planResearch.id }
-  })
-
-  // --- Level 4: กิจกรรมรอง (Activities) ---
   const activitiesData = [
     { code: '10', name: 'กิจกรรมบริหารทั่วไป', parentId: workSupport.id, planId: planEd.id },
     { code: '11', name: 'กิจกรรมทะเบียนนักศึกษาและประมวลผล', parentId: workSupport.id, planId: planEd.id },
@@ -154,13 +205,10 @@ async function main() {
     { code: '17', name: 'กิจกรรมผลิตและพัฒนาสื่อการศึกษา', parentId: workSupport.id, planId: planEd.id },
     { code: '18', name: 'กิจกรรมพัฒนาหลักสูตรและการเรียนการสอน', parentId: workSupport.id, planId: planEd.id },
     { code: '19', name: 'กิจกรรมส่งเสริมการผลิตตำรา', parentId: workSupport.id, planId: planEd.id },
-    // กิจกรรมรองภายใต้งานวิทย์ (0102)
     { code: '25', name: 'กิจกรรมสาขาเทคโนโลยีสารสนเทศ', parentId: workSci.id, planId: planEd.id },
   ]
 
   const activityMap = new Map<string, number>()
-
-  // ใส่ Group 3 (Level 3) ลงใน Map ด้วย เพราะต้องใช้ Allocations
   activityMap.set('0201', workService.id)
   activityMap.set('0301', workCulture.id)
   activityMap.set('0401', workResearch.id)
@@ -172,35 +220,23 @@ async function main() {
     activityMap.set(act.code, created.id)
   }
 
-  // --- Level 5: กิจกรรมย่อย (Sub Activities) ---
-  // ลูกของ 25 สาขา IT
   const parent25ID = activityMap.get('25')
   if (parent25ID) {
-    const sub211 = await prisma.projectActivity.create({
-      data: { code: '211', name: 'ระดับปริญญาตรี', level: 5, parent_id: parent25ID, plan_id: planEd.id }
-    })
-    const sub212 = await prisma.projectActivity.create({
-      data: { code: '212', name: 'ระดับปริญญาโท-เอก', level: 5, parent_id: parent25ID, plan_id: planEd.id }
-    })
-
-    // Add Sub Activities to Map
+    const sub211 = await prisma.projectActivity.create({ data: { code: '211', name: 'ระดับปริญญาตรี', level: 5, parent_id: parent25ID, plan_id: planEd.id } })
+    const sub212 = await prisma.projectActivity.create({ data: { code: '212', name: 'ระดับปริญญาโท-เอก', level: 5, parent_id: parent25ID, plan_id: planEd.id } })
     activityMap.set('211', sub211.id)
     activityMap.set('212', sub212.id)
   }
 
-
   // =====================================================================
-  // 4. ALLOCATIONS & BUDGET RECORDS: เชื่อมโยงและสร้างช่องกรอก
+  // 5. ALLOCATIONS & BUDGET RECORDS (🔥 จุดสำคัญที่แก้ไข logic)
   // =====================================================================
   console.log('running... Generating Allocations & Budget Records')
-
-  // Prepare Master Data in memory
+  
   const allFunds = await prisma.fundMaster.findMany()
   const fundMap = new Map(allFunds.map(f => [f.code, f.id]))
-
   const allItems = await prisma.expenseItemMaster.findMany({ include: { category: true } })
 
-  // Mapping: Activity Code -> List of Fund Codes
   const allocationMap: Record<string, string[]> = {
     '10': ['0100', '0705', '0600', '0702'],
     '11': ['0100', '0705'],
@@ -220,90 +256,51 @@ async function main() {
 
   for (const [actCode, fundCodes] of Object.entries(allocationMap)) {
     const actId = activityMap.get(actCode)
-
-    if (!actId) {
-      console.warn(`⚠️ Warning: Activity Code ${actCode} not found in DB map`)
-      continue
-    }
+    if (!actId) continue
 
     for (const fundCode of fundCodes) {
       const fundId = fundMap.get(fundCode)
       if (!fundId) continue
 
-      // 1. สร้าง Allocation (บอกว่ากิจกรรมนี้ ใช้กระเป๋านี้ได้)
       const allocation = await prisma.activityFundAllocation.create({
-        data: {
-          activity_id: actId,
-          fund_id: fundId
-        }
+        data: { activity_id: actId, fund_id: fundId }
       })
 
-      // 2. ดูกติกาว่ากองทุนนี้ เห็นงบหมวดไหนบ้าง
+      // Logic เดิม: กรองระดับหมวด (Category)
       const allowedCategories = FUND_RULES[fundCode] || DEFAULT_ALLOWED_CATEGORIES
+      
+      // ✅ Logic ใหม่ (Whitelist): กรองระดับรายการ (Item)
+      // ถ้าไม่ได้กำหนดไว้ใน whitelist ให้ถือว่าอนุญาตหมด ('ALL')
+      const allowedSpecificItems = FUND_ITEM_WHITELIST[fundCode] || ['ALL']
 
-      // 3. กรอง Item เฉพาะที่ได้รับอนุญาต
-      const validItems = allItems.filter(item => allowedCategories.includes(item.category.code))
+      const validItems = allItems.filter(item => {
+        // 1. เช็คว่าอยู่ในหมวดที่อนุญาตไหม (Logic เดิม)
+        const isCatAllowed = allowedCategories.includes(item.category.code)
+        
+        // 2. เช็คว่าอยู่ในรายการที่อนุญาตไหม (Logic ใหม่)
+        const isItemAllowed = 
+            allowedSpecificItems.includes('ALL') || 
+            allowedSpecificItems.includes(item.code || '')
 
-      // 4. สร้าง Record (ช่องกรอกเงิน) รอไว้เลย
+        return isCatAllowed && isItemAllowed
+      })
+
       const recordsData = validItems.map(item => ({
         allocation_id: allocation.id,
         item_id: item.id,
         academic_year: CURRENT_YEAR,
         amount_gov: 0,
         amount_income: 0,
-        updated_at: new Date() // Prisma createMany needs explicit dates sometimes depending on version
+        updated_at: new Date()
       }))
 
       if (recordsData.length > 0) {
-        await prisma.budgetRecord.createMany({
-          data: recordsData
-        })
+        await prisma.budgetRecord.createMany({ data: recordsData })
       }
     }
   }
 
-  console.log('✅ Seeding Completed (Category View Mode)')
-}
-// =====================================================================
-// 5. MASTER DATA: เพิ่มรายการรายจ่าย (Level 8)
-// =====================================================================
-console.log('running... Seeding Expense Items from External File')
-
-const categories = await prisma.budgetCategory.findMany()
-const catMap = new Map(categories.map(c => [c.code, c.id]))
-
-// วนลูปข้อมูลที่ Import มา
-for (const item of expenseItemsData) {
-  const categoryId = catMap.get(item.catCode)
-
-  if (categoryId) {
-    // Logic เดิมเป๊ะ แค่ย้ายข้อมูลไปที่อื่น
-    const existing = await prisma.expenseItemMaster.findFirst({
-      where: { code: item.code }
-    })
-
-    if (existing) {
-      await prisma.expenseItemMaster.update({
-        where: { id: existing.id },
-        data: {
-          name: item.name,
-          form_type: item.formType,
-          category_id: categoryId // เผื่อมีการย้ายหมวด
-        }
-      })
-    } else {
-      await prisma.expenseItemMaster.create({
-        data: {
-          code: item.code,
-          name: item.name,
-          category_id: categoryId,
-          form_type: item.formType
-        }
-      })
-    }
-  } else {
-    console.warn(`⚠️ Warning: Category ${item.catCode} not found for item ${item.name}`)
-  }
+  console.log('✅ Seeding Completed Successfully')
 }
 
 main()
