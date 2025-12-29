@@ -92,6 +92,14 @@ const Sidebar: React.FC = () => {
             <span>RevenueCalculationPage</span>
           </Link>
         </li>
+      
+
+      <li>
+          <Link href="/planning/teaching-service-fee" className="flex items-center px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
+            <img src="/img/icon/document-signed.svg" alt="" className="w-5 h-5 mr-3 flex-shrink-0" />
+            <span>teaching-service-fee</span>
+          </Link>
+        </li>
       </ul>
 
 
