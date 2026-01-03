@@ -9,12 +9,10 @@ export type BudgetNode = {
   code: string
   name: string
   parent_id: number | null
-  // ข้อมูล Transaction
   recordId?: number
   amountGov: number
   amountIncome: number
   details?: any
-  // ลำดับชั้น
   level: number
   children: BudgetNode[]
 }
@@ -26,16 +24,37 @@ export type AllocationGroup = {
   tree: BudgetNode[]
 }
 
-// 1. GET DATA (Filtered Tree Approach)
+// --- Helper: คำนวณยอดรวมจากลูกขึ้นไปหาพ่อ (Recursive Sum) ---
+function calculateTreeTotals(node: BudgetNode): { gov: number, income: number } {
+  // ถ้าไม่มีลูก (Leaf Node) ให้ใช้ค่าของตัวเองเลย
+  if (node.children.length === 0) {
+    return { gov: node.amountGov, income: node.amountIncome }
+  }
+
+  // ถ้ามีลูก ให้วนลูปรวมค่าจากลูก
+  let sumGov = 0
+  let sumIncome = 0
+
+  for (const child of node.children) {
+    const childTotals = calculateTreeTotals(child)
+    sumGov += childTotals.gov
+    sumIncome += childTotals.income
+  }
+
+  // เอาผลรวมจากลูก มาบวกทบกับค่าของตัวเอง (ปกติพ่อมักจะเป็น 0 แต่เผื่อไว้)
+  node.amountGov += sumGov
+  node.amountIncome += sumIncome
+
+  return { gov: node.amountGov, income: node.amountIncome }
+}
+
 export async function getBudgetDetail(activityId: number, year: number) {
   try {
-    // 1.1 ตรวจสอบ Activity
     const activity = await prisma.projectActivity.findUnique({
       where: { id: activityId }
     })
     if (!activity) return { success: false, error: 'Activity not found' }
 
-    // 1.2 ดึง Allocation
     const allocations = await prisma.activityFundAllocation.findMany({
       where: { activity_id: activityId },
       include: { fund: true },
@@ -48,7 +67,6 @@ export async function getBudgetDetail(activityId: number, year: number) {
 
     const allocationIds = allocations.map(a => a.id)
 
-    // 1.3 ดึง Records ทั้งหมด
     const records = await prisma.budgetRecord.findMany({
       where: {
         allocation_id: { in: allocationIds },
@@ -56,27 +74,21 @@ export async function getBudgetDetail(activityId: number, year: number) {
       }
     })
 
-    // 1.4 ดึง Master Data ทั้งหมด (เพื่อใช้ไต่หา Parent)
     const allItems = await prisma.expenseItemMaster.findMany({
       orderBy: { code: 'asc' }
     })
     
-    // สร้าง Map เพื่อให้ค้นหา Item Master ได้ไวๆ (ใช้ตอนไต่หาพ่อ)
+    // สร้าง Map เพื่อค้นหา Item Master ได้ไวๆ (ใช้ตอนกรอง)
     const itemMasterMap = new Map(allItems.map(i => [i.id, i]))
 
-    // 1.5 สร้าง Tree ข้อมูล แยกตามกองทุน (พร้อม Logic ตัดกิ่ง)
     const groupedData: AllocationGroup[] = allocations.map(alloc => {
-      // กรอง Record เฉพาะของกองทุนนี้
       const allocRecords = records.filter(r => r.allocation_id === alloc.id)
       const recordMap = new Map(allocRecords.map(r => [r.item_id, r]))
 
-      // --- LOGIC ใหม่: หาว่า Item ไหนบ้างที่ "เกี่ยวข้อง" กับกองทุนนี้ ---
-      // (Item ที่มี Record + พ่อๆ ของมันทั้งหมด)
+      // --- LOGIC: กรองเฉพาะ Item ที่เกี่ยวข้อง ---
       const visibleItemIds = new Set<number>()
-
       allocRecords.forEach(rec => {
         let currentId: number | null = rec.item_id
-        // ไต่ขึ้นไปหาพ่อเรื่อยๆ จนกว่าจะสุดทาง
         while (currentId && itemMasterMap.has(currentId)) {
             visibleItemIds.add(currentId)
             const item = itemMasterMap.get(currentId)
@@ -84,13 +96,8 @@ export async function getBudgetDetail(activityId: number, year: number) {
         }
       })
 
-      // ถ้าไม่มี Record เลย (เช่น เพิ่งสร้าง) ให้แสดงทั้งหมด หรือ ไม่แสดงเลย?
-      // ในกรณีนี้ ถ้าไม่มี record เลย จะแสดงว่างๆ เพื่อให้รู้ว่าไม่มีงบ
-      // แต่ถ้าอยากให้แสดงโครงเปล่า ให้ข้าม Logic filter นี้ไป
-      // (ในที่นี้ใช้ Filter เพื่อแก้ปัญหา "ข้อมูลซ้ำซ้อน")
-      
       const nodes: BudgetNode[] = allItems
-        .filter(item => visibleItemIds.has(item.id)) // ✅ กรองเฉพาะตัวที่เกี่ยว
+        .filter(item => visibleItemIds.has(item.id))
         .map(item => {
           const rec = recordMap.get(item.id)
           return {
@@ -107,7 +114,6 @@ export async function getBudgetDetail(activityId: number, year: number) {
           }
         })
 
-      // ประกอบร่าง Tree
       const nodeMap = new Map(nodes.map(n => [n.itemId, n]))
       const roots: BudgetNode[] = []
 
@@ -119,7 +125,6 @@ export async function getBudgetDetail(activityId: number, year: number) {
         }
       })
 
-      // คำนวณ Level
       const calculateLevel = (list: BudgetNode[], lvl: number) => {
         list.forEach(n => {
           n.level = lvl
@@ -127,6 +132,9 @@ export async function getBudgetDetail(activityId: number, year: number) {
         })
       }
       calculateLevel(roots, 0)
+
+      // ✅ เรียกใช้ฟังก์ชันคำนวณยอดรวม (Summation) ตรงนี้
+      roots.forEach(root => calculateTreeTotals(root))
 
       return {
         allocationId: alloc.id,
@@ -136,14 +144,11 @@ export async function getBudgetDetail(activityId: number, year: number) {
       }
     })
 
-    return {
-      success: true,
-      data: { activity, groupedData }
-    }
+    return { success: true, data: { activity, groupedData } }
 
   } catch (error) {
-    console.error('Error fetching budget:', error)
-    return { success: false, error: 'Internal Server Error' }
+    console.error('Error:', error)
+    return { success: false, error: 'Failed to fetch' }
   }
 }
 
