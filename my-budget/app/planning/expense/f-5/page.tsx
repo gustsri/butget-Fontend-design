@@ -1,8 +1,7 @@
 import React from 'react'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import ExpensePlannerClient from './ExpensePlannerClient'
 
-const prisma = new PrismaClient()
 
 type PageProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>

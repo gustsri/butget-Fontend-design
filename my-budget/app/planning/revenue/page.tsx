@@ -195,7 +195,6 @@ export default function RevenuePage() {
             <main className="flex-1 ml-64 p-8 space-y-8">
 
                 {/* Header */}
-                {/* Header */}
                 <div className="bg-[#1e293b] rounded-xl shadow-lg z-20 relative p-8">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
                         <div className="space-y-4">
