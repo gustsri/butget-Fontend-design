@@ -1,14 +1,15 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { 
     ArrowLeft, Wallet, TrendingUp, TrendingDown, 
-    Layout, Calendar, Save, Send, Loader2, FileText, FolderTree
+    Layout, Calendar, Send, Loader2, FileText, FolderTree, CheckCircle2
 } from 'lucide-react'
 import F5TableView from './F5TableView'
 import DashboardView from './DashboardView'
 import YearDropdown from '@/components/shared/year'
+import { getExpenseBudgetSummary, updateExpenseBudgetStatus } from './actions'
 
 type Props = {
   currentYear: number
@@ -21,22 +22,24 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // 1. คำนวณยอดรวม (แก้ไขสูตรตาม Requirement)
-  const totalGov = detailData?.groupedData?.reduce((sum: number, group: any) => {
-      return sum + group.tree.reduce((s: number, node: any) => s + node.amountGov, 0)
-  }, 0) || 0
+  const [summary, setSummary] = useState({ totalBudget: 0, totalIncome: 0, status: 'draft' })
+  const [isSaving, setIsSaving] = useState(false)
 
-  const totalIncome = detailData?.groupedData?.reduce((sum: number, group: any) => {
-      return sum + group.tree.reduce((s: number, node: any) => s + node.amountIncome, 0)
-  }, 0) || 0
+  // Load Summary
+  useEffect(() => {
+    const loadSummary = async () => {
+        const res = await getExpenseBudgetSummary(currentYear)
+        if (res) {
+            setSummary({
+                totalBudget: res.totalBudget,
+                totalIncome: res.totalIncome,
+                status: res.status
+            })
+        }
+    }
+    loadSummary()
+  }, [currentYear, detailData]) // Refresh เมื่อข้อมูลเปลี่ยน
 
-  // ✅ แก้ไข: วงเงินงบประมาณรวม = เงินรายได้ (Income) เท่านั้น
-  const totalBudget = totalIncome 
-
-  const [isSaving, setIsSaving] = React.useState(false)
-  const status = detailData?.status || 'draft' 
-
-  // ... (Handlers เดิม ไม่ต้องแก้) ...
   const handleYearChange = (yearId: number | null, yearVal: number) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('year', yearVal.toString())
@@ -49,19 +52,36 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
     router.push(`${pathname}?${params.toString()}`)
   }
 
-  const handleSave = async (type: 'draft' | 'submitted') => {
+  // ✅ เหลือแค่ฟังก์ชันยื่นเสนอ (Submit)
+  const handleSubmitPlan = async () => {
+      if (!confirm('ยืนยันการ "ยื่นเสนอ" แผนงบประมาณ? ข้อมูลจะไม่สามารถแก้ไขได้หลังจากนี้')) return
+
       setIsSaving(true)
-      await new Promise(r => setTimeout(r, 1000)) 
-      setIsSaving(false)
-      alert(`บันทึกสถานะ ${type} เรียบร้อย (Mock)`)
+      try {
+          const res = await updateExpenseBudgetStatus(currentYear, 'submitted')
+          if (res.success) {
+              alert('ยื่นเสนอแผนงบประมาณเรียบร้อยแล้ว')
+              setSummary(prev => ({ ...prev, status: 'submitted' }))
+              router.refresh()
+          } else {
+              alert('เกิดข้อผิดพลาด: ' + res.error)
+          }
+      } catch (e) {
+          console.error(e)
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อ')
+      } finally {
+          setIsSaving(false)
+      }
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
        
-       {/* 1. HEADER (เหมือนเดิม) */}
+       {/* HEADER */}
        <div className="w-full bg-[#1e293b] shadow-md z-30 relative">
             <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                
+                {/* Title */}
                 <div className="space-y-2">
                     <h6 className="text-blue-300 text-xs font-bold tracking-wider uppercase">
                         IT BUDGET PLANNING SYSTEM
@@ -71,6 +91,8 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
                         ประมาณการรายจ่าย (Expense Forecast)
                     </h1>
                 </div>
+
+                {/* Right Controls */}
                 <div className="flex flex-col items-end gap-3 w-full md:w-auto">
                     <div className="flex items-center gap-4 text-white">
                         <div className="flex items-center gap-2"> 
@@ -86,62 +108,59 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
                             </div>
                         </div>
                     </div>
-                    {detailData && (
-                        <div className="flex gap-2 w-full md:w-auto justify-end">
-                            {status !== 'submitted' ? (
-                                <>
-                                    <button onClick={() => handleSave('draft')} disabled={isSaving} className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 font-semibold rounded shadow-sm transition-all text-sm h-10 min-w-[100px]">
-                                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                        <span>บันทึกร่าง</span>
-                                    </button>
-                                    <button onClick={() => handleSave('submitted')} disabled={isSaving} className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded shadow-lg transition-all text-sm h-10 min-w-[100px]">
-                                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                        <span>ยื่นเสนอ</span>
-                                    </button>
-                                </>
-                            ) : (
-                                <div className="px-6 py-2 bg-blue-500/20 text-blue-200 border border-blue-500/30 rounded font-medium text-sm flex items-center gap-2">
-                                    <FileText className="w-4 h-4" /> ส่งตรวจสอบแล้ว
-                                </div>
-                            )}
-                        </div>
-                    )}
+
+                    {/* ✅ Action Buttons: เหลือแค่ปุ่มยื่นเสนอ */}
+                    <div className="flex gap-2 w-full md:w-auto justify-end">
+                        {summary.status !== 'submitted' ? (
+                            <button
+                                onClick={handleSubmitPlan}
+                                disabled={isSaving}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded shadow-lg transition-all text-sm h-10 min-w-[140px]"
+                            >
+                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                <span>ยื่นเสนอตรวจสอบ</span>
+                            </button>
+                        ) : (
+                            <div className="px-6 py-2 bg-green-500/20 text-green-100 border border-green-500/30 rounded font-medium text-sm flex items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4" /> ส่งตรวจสอบแล้ว
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
        </div>
 
-      {/* 2. CONTENT AREA */}
+      {/* CONTENT AREA */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 space-y-6">
         
-        {/* ✅ SUMMARY CARDS: ปรับข้อความให้ชัดเจน */}
+        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <StatCard 
-                title="วงเงินงบประมาณรวม (Total Budget)" 
-                value={totalBudget} // = Income
+                title="วงเงินงบประมาณรวม (Total)" 
+                value={summary.totalIncome} 
                 icon={<Wallet className="w-6 h-6 text-white" />}
-                gradient="bg-gradient-to-br from-orange-500 to-red-500" // สีส้มแดงเพื่อให้รู้ว่าเป็นยอดหลัก (Income)
+                gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
                 shadow="shadow-sm hover:shadow-md"
             />
             <StatCard 
-                title="งบประมาณแผ่นดิน (Budget Limit)" 
-                value={totalGov} 
+                title="งบประมาณแผ่นดิน (Limit)" 
+                value={summary.totalBudget} 
                 icon={<TrendingUp className="w-6 h-6 text-white" />}
                 gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
                 shadow="shadow-sm hover:shadow-md"
             />
             <StatCard 
                 title="เงินรายได้ (Plan)" 
-                value={totalIncome} 
+                value={summary.totalIncome} 
                 icon={<TrendingDown className="w-6 h-6 text-white" />}
-                gradient="bg-gradient-to-br from-emerald-500 to-teal-600" // สีเขียวเหมือนเดิม
+                gradient="bg-gradient-to-br from-orange-400 to-red-500"
                 shadow="shadow-sm hover:shadow-md"
             />
         </div>
 
+        {/* Content Switcher */}
         {detailData ? (
-          // View A: Detail Table
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
-             {/* Navigation */}
              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center">
                 <div className="flex items-center gap-4">
                     <button 
@@ -159,27 +178,23 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
                         </h2>
                     </div>
                 </div>
+                
+                {/* ℹ️ บอก User ว่าบันทึกอัตโนมัติ */}
+                <div className="text-xs text-gray-400 italic flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> บันทึกข้อมูลอัตโนมัติเมื่อพิมพ์เสร็จ
+                </div>
              </div>
-
-             {/* Table */}
-             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <F5TableView data={detailData} year={currentYear} />
-             </div>
+             
+             <F5TableView data={detailData} year={currentYear} />
           </div>
-
         ) : (
-          // View B: Hierarchy Selection
           <div className="space-y-4 animate-in fade-in duration-700">
              <div className="flex items-center justify-between px-1 pt-2">
                 <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2">
                     <FolderTree className="w-5 h-5 text-gray-400" />
                     โครงสร้างแผนงาน (Project Structure)
                 </h3>
-                <span className="text-xs text-gray-400 font-medium bg-white px-3 py-1 rounded-full border border-gray-200">
-                    เลือกรายการเพื่อระบุงบประมาณ
-                </span>
              </div>
-             
              <DashboardView hierarchy={hierarchy} currentYear={currentYear} />
           </div>
         )}
@@ -188,7 +203,6 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
   )
 }
 
-// ... StatCard เหมือนเดิม ...
 function StatCard({ title, value, icon, gradient, shadow }: any) {
     return (
         <div className={`bg-white p-5 rounded-xl border border-gray-200 ${shadow} flex items-center justify-between transition-all duration-300`}>

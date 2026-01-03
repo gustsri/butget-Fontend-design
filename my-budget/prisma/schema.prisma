@@ -213,6 +213,19 @@ model ActivityFundAllocation {
   @@unique([activity_id, fund_id])
   @@map("activity_fund_allocations")
 }
+// Model สำหรับคุมแผนรายจ่ายภาพรวม (เหมือน RevenueBudget)
+model ExpenseBudget {
+  id            Int          @id @default(autoincrement())
+  budget_year   Int          @unique // ปีงบประมาณ
+  total_amount  Decimal      @default(0) @db.Decimal(15, 2) // ยอดรวมทั้งปี
+  status        BudgetStatus @default(draft) // draft, submitted
+  version       Int          @default(1)
+  is_active     Boolean      @default(true)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+
+  @@map("expense_budgets")
+}
 
 model BudgetRecord {
   id            Int @id @default(autoincrement())
@@ -231,7 +244,7 @@ model BudgetRecord {
   fund_id Int
   fund    FundMaster @relation(fields: [fund_id], references: [id])
 
-  amount_gov    Decimal  @default(0) @db.Decimal(15, 2)
+  amount_budget Decimal  @default(0) @db.Decimal(15, 2) // เดิม amount_gov (วงเงินงบประมาณที่ตั้งไว้)
   amount_income Decimal  @default(0) @db.Decimal(15, 2)
   details       Json?
   updated_at    DateTime @updatedAt
