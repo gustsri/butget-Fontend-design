@@ -1,6 +1,6 @@
 'use server'
 
-import { prisma } from '@/lib/prisma' // ✅ เรียกผ่าน Singleton เพื่อแก้ปัญหา Connection
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { BudgetStatus } from '@prisma/client'
 
@@ -14,7 +14,7 @@ export type BudgetNode = {
   name: string
   parent_id: number | null
   recordId?: number
-  amountBudget: number // ✅ เปลี่ยนชื่อจาก amountGov ให้ตรงความหมาย
+  amountBudget: number
   amountIncome: number
   details?: any
   level: number
@@ -28,18 +28,23 @@ export type AllocationGroup = {
   tree: BudgetNode[]
 }
 
+export type SaveBudgetParams = {
+  allocationId: number
+  itemId: number
+  year: number
+  amountBudget: number
+  amountIncome: number
+}
+
 // ============================================================================
 // 2. HELPER FUNCTIONS
 // ============================================================================
 
-// ฟังก์ชันวนลูปรวมยอดจากลูกขึ้นไปหาพ่อ (Recursive Summation)
 function calculateTreeTotals(node: BudgetNode): { budget: number, income: number } {
-  // ถ้าไม่มีลูก (Leaf Node) ให้ใช้ค่าของตัวเอง
   if (node.children.length === 0) {
     return { budget: node.amountBudget, income: node.amountIncome }
   }
 
-  // ถ้ามีลูก ให้วนลูปรวมค่าจากลูก
   let sumBudget = 0
   let sumIncome = 0
 
@@ -49,22 +54,19 @@ function calculateTreeTotals(node: BudgetNode): { budget: number, income: number
     sumIncome += childTotals.income
   }
 
-  // เอาผลรวมจากลูก มาบวกทบกับค่าของตัวเอง
   node.amountBudget += sumBudget
   node.amountIncome += sumIncome
 
   return { budget: node.amountBudget, income: node.amountIncome }
 }
 
-// อัปเดตยอดรวมทั้งปีลงตาราง ExpenseBudget
 async function updateExpenseBudgetTotal(year: number) {
     const aggregator = await prisma.budgetRecord.aggregate({
         where: { academic_year: year },
-        _sum: { amount_income: true } // ใช้ยอด Income เป็นยอดหลัก
+        _sum: { amount_income: true } 
     })
     const total = Number(aggregator._sum.amount_income || 0)
     
-    // อัปเดตยอดรวมถ้ามี Record ของปีนั้นอยู่
     const budget = await prisma.expenseBudget.findUnique({ where: { budget_year: year } })
     if (budget) {
         await prisma.expenseBudget.update({
@@ -78,7 +80,6 @@ async function updateExpenseBudgetTotal(year: number) {
 // 3. MAIN ACTIONS
 // ============================================================================
 
-// --- 3.1 ดึงข้อมูลรายละเอียดงบประมาณ (Tree View) ---
 export async function getBudgetDetail(activityId: number, year: number) {
   try {
     const activity = await prisma.projectActivity.findUnique({
@@ -111,12 +112,12 @@ export async function getBudgetDetail(activityId: number, year: number) {
     
     const itemMasterMap = new Map(allItems.map(i => [i.id, i]))
 
-    // สร้าง Tree ข้อมูล แยกตามกองทุน
     const groupedData: AllocationGroup[] = allocations.map(alloc => {
       const allocRecords = records.filter(r => r.allocation_id === alloc.id)
       const recordMap = new Map(allocRecords.map(r => [r.item_id, r]))
 
-      // Pruning Tree: กรองเฉพาะ Item ที่เกี่ยวข้อง
+      // ✅ กรองเฉพาะ Item ที่เกี่ยวข้อง (Pruning Tree) กลับมาใช้อีกครั้ง
+      // เพื่อให้แสดงเฉพาะรายการที่มีใน Allocation นั้นๆ จริงๆ
       const visibleItemIds = new Set<number>()
       allocRecords.forEach(rec => {
         let currentId: number | null = rec.item_id
@@ -127,8 +128,9 @@ export async function getBudgetDetail(activityId: number, year: number) {
         }
       })
 
+      // สร้าง Node จาก items ที่ visible เท่านั้น
       const nodes: BudgetNode[] = allItems
-        .filter(item => visibleItemIds.has(item.id))
+        .filter(item => visibleItemIds.has(item.id)) // กรองตรงนี้
         .map(item => {
           const rec = recordMap.get(item.id)
           return {
@@ -137,7 +139,6 @@ export async function getBudgetDetail(activityId: number, year: number) {
             name: item.name,
             parent_id: item.parent_id,
             recordId: rec?.id,
-            // ✅ ใช้ field ใหม่: amount_budget
             amountBudget: rec ? Number(rec.amount_budget) : 0, 
             amountIncome: rec ? Number(rec.amount_income) : 0,
             details: rec?.details,
@@ -146,7 +147,6 @@ export async function getBudgetDetail(activityId: number, year: number) {
           }
         })
 
-      // ประกอบร่าง Tree
       const nodeMap = new Map(nodes.map(n => [n.itemId, n]))
       const roots: BudgetNode[] = []
 
@@ -166,7 +166,6 @@ export async function getBudgetDetail(activityId: number, year: number) {
       }
       calculateLevel(roots, 0)
 
-      // ✅ คำนวณผลรวมจากลูกขึ้นแม่
       roots.forEach(root => calculateTreeTotals(root))
 
       return {
@@ -195,15 +194,6 @@ export async function getBudgetDetail(activityId: number, year: number) {
   }
 }
 
-// --- 3.2 บันทึกข้อมูลรายบรรทัด (Save) ---
-export type SaveBudgetParams = {
-  allocationId: number
-  itemId: number
-  year: number
-  amountBudget: number // ✅ รับค่า Budget Limit (Gov เดิม)
-  amountIncome: number // รับค่า Plan Amount
-}
-
 export async function saveBudgetRecord(data: SaveBudgetParams) {
   try {
     const [alloc, item] = await Promise.all([
@@ -213,7 +203,6 @@ export async function saveBudgetRecord(data: SaveBudgetParams) {
 
     if (!alloc || !item) throw new Error("Reference data not found")
 
-    // Upsert Record
     const existing = await prisma.budgetRecord.findFirst({
       where: {
         allocation_id: data.allocationId,
@@ -226,7 +215,7 @@ export async function saveBudgetRecord(data: SaveBudgetParams) {
       await prisma.budgetRecord.update({
         where: { id: existing.id },
         data: {
-          amount_budget: data.amountBudget, // ✅ บันทึกเข้าช่อง Budget
+          amount_budget: data.amountBudget,
           amount_income: data.amountIncome,
           updated_at: new Date()
         }
@@ -245,7 +234,6 @@ export async function saveBudgetRecord(data: SaveBudgetParams) {
       })
     }
 
-    // อัปเดตยอดรวมทั้งปี
     await updateExpenseBudgetTotal(data.year)
 
     revalidatePath('/')
@@ -257,10 +245,8 @@ export async function saveBudgetRecord(data: SaveBudgetParams) {
   }
 }
 
-// --- 3.3 ดึงยอดรวมและสถานะของปี (Summary) ---
 export async function getExpenseBudgetSummary(year: number) {
   try {
-    // 1. หาหรือสร้าง Master ExpenseBudget
     let expenseBudget = await prisma.expenseBudget.findUnique({
       where: { budget_year: year }
     })
@@ -271,7 +257,6 @@ export async function getExpenseBudgetSummary(year: number) {
       })
     }
 
-    // 2. คำนวณยอดรวมจริงจาก Records ทั้งหมด
     const aggregator = await prisma.budgetRecord.aggregate({
       where: { academic_year: year },
       _sum: {
@@ -293,38 +278,24 @@ export async function getExpenseBudgetSummary(year: number) {
   }
 }
 
-// --- 3.4 อัปเดตสถานะแผนรายจ่าย (บันทึกร่าง / ยื่นเสนอ) ---
 export async function updateExpenseBudgetStatus(year: number, status: BudgetStatus) {
   try {
-    const budget = await prisma.expenseBudget.findUnique({ where: { budget_year: year } })
-    
-    if (budget) {
-        await prisma.expenseBudget.update({
-            where: { id: budget.id },
-            data: { 
-                status: status,
-                updated_at: new Date()
-            }
-        })
-    } else {
-        // ถ้ายังไม่มีปีนี้ (แปลกๆ แต่กันไว้) ให้สร้างใหม่
-        await prisma.expenseBudget.create({
-            data: { budget_year: year, status: status }
-        })
-    }
-
+    await prisma.expenseBudget.update({
+      where: { budget_year: year },
+      data: { 
+        status: status,
+        updated_at: new Date()
+      }
+    })
     revalidatePath('/')
     return { success: true }
-
   } catch (error) {
     console.error('Failed to update status:', error)
     return { success: false, error: 'ไม่สามารถบันทึกสถานะได้' }
   }
 }
 
-// --- 3.5 จัดการปีงบประมาณ (Years & Clone) ---
 export async function getBudgetYears() {
-  // ดึงจาก ExpenseBudget เป็นหลัก
   const years = await prisma.expenseBudget.findMany({
     orderBy: { budget_year: 'desc' },
     select: { id: true, budget_year: true }
@@ -332,35 +303,55 @@ export async function getBudgetYears() {
   return years.map(y => ({ id: y.id, year: y.budget_year }))
 }
 
+// actions.ts (ทับ function createBudgetYear เดิม)
+
 export async function createBudgetYear(targetYear: number) {
+  console.log(`🚀 [START] กำลังเริ่มสร้างปีงบประมาณ: ${targetYear}`)
+
   try {
-    // 1. เช็คว่ามีปีนี้หรือยัง
-    const existing = await prisma.expenseBudget.findUnique({
+    // 1. เช็ค/สร้าง Header
+    let expenseBudget = await prisma.expenseBudget.findUnique({
       where: { budget_year: targetYear }
     })
 
-    if (existing) {
-      return { success: false, error: `ปีงบประมาณ ${targetYear} มีอยู่แล้ว` }
+    if (!expenseBudget) {
+      console.log(`Checking... ไม่พบ Header ปี ${targetYear}, กำลังสร้างใหม่...`)
+      expenseBudget = await prisma.expenseBudget.create({
+        data: { budget_year: targetYear, status: 'draft', total_amount: 0 }
+      })
+    } else {
+      console.log(`Checking... พบ Header ปี ${targetYear} แล้ว`)
     }
 
-    // 2. สร้าง ExpenseBudget ใหม่
-    await prisma.expenseBudget.create({
-      data: { budget_year: targetYear, status: 'draft', total_amount: 0 }
+    // 2. เช็ครายการข้างใน
+    const existingRecordsCount = await prisma.budgetRecord.count({
+      where: { academic_year: targetYear }
     })
+    console.log(`Count... พบรายการเดิมจำนวน: ${existingRecordsCount} รายการ`)
 
-    // 3. ✨ CLONE DATA Logic: คัดลอกโครงสร้างจากปีล่าสุด ✨
+    if (existingRecordsCount > 0) {
+      console.log(`✅ จบการทำงาน: ปีนี้มีข้อมูลอยู่แล้ว ไม่ต้องทำอะไร`)
+      return { success: true, year: targetYear, message: 'Year already has data' }
+    }
+
+    // 3. เริ่มกระบวนการสร้างข้อมูล (เพราะรายการเป็น 0)
+    console.log(`🔄 เริ่มกระบวนการ Clone/Create ข้อมูล...`)
+
+    // หาปีเก่า
     const lastYearRecord = await prisma.budgetRecord.findFirst({
       orderBy: { academic_year: 'desc' },
-      where: { academic_year: { lt: targetYear } } // หาปีที่น้อยกว่าปีใหม่
+      where: { academic_year: { lt: targetYear } }
     })
 
     if (lastYearRecord) {
+      // --- CASE A: มีปีเก่า (Clone) ---
       const sourceYear = lastYearRecord.academic_year
-      console.log(`Creating year ${targetYear} by cloning from ${sourceYear}...`)
+      console.log(`CASE A: เจอปีเก่า (${sourceYear}) -> จะทำการ Clone`)
 
       const sourceRecords = await prisma.budgetRecord.findMany({
         where: { academic_year: sourceYear }
       })
+      console.log(`   - เจอข้อมูลต้นฉบับ ${sourceRecords.length} รายการ`)
 
       if (sourceRecords.length > 0) {
         const newRecordsData = sourceRecords.map(rec => ({
@@ -369,15 +360,53 @@ export async function createBudgetYear(targetYear: number) {
           item_id: rec.item_id,
           category_id: rec.category_id,
           fund_id: rec.fund_id,
-          amount_budget: 0, // Reset เป็น 0 ให้กรอกใหม่
-          amount_income: 0, // Reset เป็น 0 ให้กรอกใหม่
+          amount_budget: 0,
+          amount_income: 0,
           details: rec.details
         }))
 
-        // Batch Insert
-        await prisma.budgetRecord.createMany({
-          data: newRecordsData
-        })
+        const result = await prisma.budgetRecord.createMany({ data: newRecordsData })
+        console.log(`   - 🎉 สร้างข้อมูลสำเร็จ: ${result.count} รายการ`)
+      }
+
+    } else {
+      // --- CASE B: ไม่มีปีเก่า (Cold Start) ---
+      console.log(`CASE B: ไม่เจอปีเก่า -> จะสร้างจาก Master Data`)
+
+      const allAllocations = await prisma.activityFundAllocation.findMany()
+      const allItems = await prisma.expenseItemMaster.findMany()
+
+      console.log(`   - Master Allocations: ${allAllocations.length} รายการ`)
+      console.log(`   - Master Items: ${allItems.length} รายการ`)
+
+      if (allAllocations.length === 0 || allItems.length === 0) {
+          console.error(`❌ ERROR: Master Data ว่างเปล่า! ไม่สามารถสร้างรายการได้`)
+          return { success: false, error: 'Master Data (Allocation/Item) is empty' }
+      }
+
+      const newRecordsData = []
+      for (const alloc of allAllocations) {
+          for (const item of allItems) {
+              // กรองเฉพาะ Item ที่เป็นลูก (ไม่มีลูกต่อ) หรือสร้างทั้งหมดตามต้องการ
+              // ในที่นี้สร้างหมดเพื่อให้แน่ใจว่ามีข้อมูล
+              newRecordsData.push({
+                  academic_year: targetYear,
+                  allocation_id: alloc.id,
+                  item_id: item.id,
+                  category_id: item.category_id,
+                  fund_id: alloc.fund_id,
+                  amount_budget: 0,
+                  amount_income: 0
+              })
+          }
+      }
+
+      console.log(`   - เตรียมข้อมูลสำหรับสร้าง: ${newRecordsData.length} รายการ`)
+      
+      if (newRecordsData.length > 0) {
+          // createMany อาจจะรับได้จำกัด ถ้าเยอะมากอาจต้องแบ่ง batch แต่ลองยัดหมดก่อน
+          const result = await prisma.budgetRecord.createMany({ data: newRecordsData })
+          console.log(`   - 🎉 สร้างข้อมูลสำเร็จ (Cold Start): ${result.count} รายการ`)
       }
     }
 
@@ -385,7 +414,7 @@ export async function createBudgetYear(targetYear: number) {
     return { success: true, year: targetYear }
 
   } catch (error) {
-    console.error('Failed to create budget year:', error)
+    console.error('❌ CRITICAL ERROR:', error)
     return { success: false, error: 'Failed to create budget year' }
   }
 }

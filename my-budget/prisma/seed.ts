@@ -622,7 +622,7 @@ async function main() {
             item_id: item.id,
             category_id: item.category_id,
             fund_id: fundId,
-            amount_gov: 0,
+            amount_budget: 0,
             amount_income: 0
           }
         })

@@ -9,7 +9,11 @@ import {
 import F5TableView from './F5TableView'
 import DashboardView from './DashboardView'
 import YearDropdown from '@/components/shared/year'
-import { getExpenseBudgetSummary, updateExpenseBudgetStatus } from './actions'
+import { 
+    getExpenseBudgetSummary, 
+    updateExpenseBudgetStatus,
+    createBudgetYear // ✅ Import Action สร้างปี
+} from './actions'
 
 type Props = {
   currentYear: number
@@ -25,7 +29,7 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
   const [summary, setSummary] = useState({ totalBudget: 0, totalIncome: 0, status: 'draft' })
   const [isSaving, setIsSaving] = useState(false)
 
-  // Load Summary
+  // ... (useEffect loadSummary เหมือนเดิม) ...
   useEffect(() => {
     const loadSummary = async () => {
         const res = await getExpenseBudgetSummary(currentYear)
@@ -38,12 +42,35 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
         }
     }
     loadSummary()
-  }, [currentYear, detailData]) // Refresh เมื่อข้อมูลเปลี่ยน
+  }, [currentYear, detailData])
 
   const handleYearChange = (yearId: number | null, yearVal: number) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('year', yearVal.toString())
     router.push(`${pathname}?${params.toString()}`)
+  }
+
+  // ✅ เพิ่มฟังก์ชันนี้: เพื่อรับ Event การสร้างปีใหม่จาก Dropdown
+  const handleCreateYear = async (newYear: number) => {
+    console.log("🟢 Client: กดสร้างปี " + newYear + " แล้ว (ถ้าไม่ขึ้น แสดงว่าปุ่มเสีย)");
+      try {
+          setIsSaving(true)
+          // เรียก Server Action เพื่อสร้างและ Clone ข้อมูล
+          const res = await createBudgetYear(newYear)
+          
+          if (res.success) {
+              alert(`สร้างปีงบประมาณ ${newYear} และคัดลอกข้อมูลเรียบร้อยแล้ว`)
+              // เปลี่ยนหน้าไปปีใหม่ทันที
+              handleYearChange(null, newYear)
+          } else {
+              alert('เกิดข้อผิดพลาด: ' + (res.error || 'Unknown error'))
+          }
+      } catch (error) {
+          console.error(error)
+          alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้')
+      } finally {
+          setIsSaving(false)
+      }
   }
 
   const handleBack = () => {
@@ -52,8 +79,8 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
     router.push(`${pathname}?${params.toString()}`)
   }
 
-  // ✅ เหลือแค่ฟังก์ชันยื่นเสนอ (Submit)
   const handleSubmitPlan = async () => {
+      // ... (Logic เดิม) ...
       if (!confirm('ยืนยันการ "ยื่นเสนอ" แผนงบประมาณ? ข้อมูลจะไม่สามารถแก้ไขได้หลังจากนี้')) return
 
       setIsSaving(true)
@@ -100,16 +127,18 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
                                 <Calendar className="w-4 h-4" /> ปีงบประมาณ:
                             </span>
                             <div className="bg-white/10 rounded-lg p-0.5">
+                                {/* ✅ ส่ง onCreateYear ไปให้ Dropdown */}
                                 <YearDropdown 
                                     selectedYear={currentYear}
                                     onYearChange={handleYearChange}
                                     allowCreate={true}
+                                    onCreateYear={handleCreateYear} 
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* ✅ Action Buttons: เหลือแค่ปุ่มยื่นเสนอ */}
+                    {/* Buttons */}
                     <div className="flex gap-2 w-full md:w-auto justify-end">
                         {summary.status !== 'submitted' ? (
                             <button
@@ -178,8 +207,6 @@ export default function ExpensePlannerClient({ currentYear, hierarchy, detailDat
                         </h2>
                     </div>
                 </div>
-                
-                {/* ℹ️ บอก User ว่าบันทึกอัตโนมัติ */}
                 <div className="text-xs text-gray-400 italic flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> บันทึกข้อมูลอัตโนมัติเมื่อพิมพ์เสร็จ
                 </div>
