@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { BudgetStatus } from '@prisma/client'
-
+import { unstable_noStore as noStore } from 'next/cache'; // ✅ 1. เพิ่ม import นี้
 // ============================================================================
 // 1. TYPE DEFINITIONS
 // ============================================================================
@@ -296,11 +296,29 @@ export async function updateExpenseBudgetStatus(year: number, status: BudgetStat
 }
 
 export async function getBudgetYears() {
-  const years = await prisma.expenseBudget.findMany({
-    orderBy: { budget_year: 'desc' },
-    select: { id: true, budget_year: true }
-  })
-  return years.map(y => ({ id: y.id, year: y.budget_year }))
+  noStore(); // 👈 ใส่บรรทัดนี้เพื่อบังคับให้ดึงข้อมูลจาก DB สดๆ ทุกครั้ง ห้าม Cache
+
+  try {
+    const years = await prisma.expenseBudget.findMany({
+      orderBy: { budget_year: 'desc' },
+      select: { 
+        id: true, 
+        budget_year: true,
+        status: true 
+      }
+    })
+    
+    // Log ดูว่าดึงได้กี่ปี (ดูใน Terminal)
+    console.log(`[getBudgetYears] Found ${years.length} years in DB`);
+
+    return years.map(y => ({ 
+        id: y.id, 
+        year: y.budget_year 
+    }))
+  } catch (error) {
+    console.error("Failed to fetch budget years:", error);
+    return [];
+  }
 }
 
 // actions.ts (ทับ function createBudgetYear เดิม)

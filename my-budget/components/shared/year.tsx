@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronDown, PlusCircle, Loader2, Plus, CalendarPlus } from "lucide-react"; 
+import { ChevronDown, Calendar, Plus, Check } from "lucide-react";
 import { getBudgetYears } from "@/app/actions";
 
 interface YearDropdownProps {
@@ -18,51 +18,82 @@ export default function YearDropdown({
   onCreateYear
 }: YearDropdownProps) {
   
-  const [years, setYears] = useState<{ id: number | null; year: number }[]>([]);
+  // เก็บรายการปีที่มีอยู่จริงใน Database
+  const [existingYears, setExistingYears] = useState<number[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isCreatingMode, setIsCreatingMode] = useState(false); // สถานะสำหรับเปิดเมนูเลือกปีที่จะสร้าง
+  const [isLoading, setIsLoading] = useState(false);
   
   const currentThaiYear = new Date().getFullYear() + 543; 
 
-  // Load existing years
+  // 1. โหลดข้อมูลเมื่อ (1) ปีเปลี่ยน หรือ (2) เปิดเมนู
+  // เราใช้ isOpen เพื่อให้แน่ใจว่าโหลดข้อมูลล่าสุดเสมอตอนจะเลือก
   useEffect(() => {
     async function loadYears() {
+      // ถ้าไม่ได้เปิดเมนู และมีข้อมูลอยู่แล้ว ไม่ต้องโหลดซ้ำ (ประหยัด Resource)
+      // แต่ถ้า selectedYear เปลี่ยน เราควรเช็คใหม่เผื่อปีนั้นเพิ่งถูกสร้าง
+      if (!isOpen && existingYears.includes(selectedYear || 0)) return;
+
       try {
-        const existing = await getBudgetYears(); 
-        const formattedYears = existing.map(y => ({ id: y.id, year: y.year }));
+        setIsLoading(true);
+        const data = await getBudgetYears(); 
+        const yearsFromDB = data.map(y => y.year);
         
-        if (formattedYears.length === 0) {
-            setYears([{ id: null, year: currentThaiYear }]);
-        } else {
-            setYears(formattedYears);
+        // 🔥 FIX: ถ้าปีที่เลือก (selectedYear) ไม่อยู่ใน DB (เช่น เพิ่งสร้างเสร็จหมาดๆ)
+        // ให้ยัดมันเข้าไปใน existingYears ชั่วคราว เพื่อให้ UI ไม่มองว่าเป็น "สร้างใหม่"
+        if (selectedYear && !yearsFromDB.includes(selectedYear)) {
+            yearsFromDB.push(selectedYear);
         }
+        
+        // เรียงลำดับจากมากไปน้อย
+        setExistingYears(yearsFromDB.sort((a, b) => b - a));
       } catch (error) {
         console.error("Failed to load years:", error);
-        setYears([{ id: null, year: currentThaiYear }]); 
+      } finally {
+        setIsLoading(false);
       }
     }
     loadYears();
-  }, [selectedYear]); // Reload เมื่อมีการเปลี่ยนปี (เผื่อปีใหม่เพิ่งถูกสร้าง)
+  }, [selectedYear, isOpen]); 
 
-  const handleSelect = (id: number | null, y: number) => {
-    onYearChange(id, y);
+  // 2. สร้างตัวเลือกทั้งหมด (Existing + Future + Past)
+  const allOptions = (() => {
+    // หาขอบเขตปีที่มีอยู่จริง
+    const maxYear = existingYears.length > 0 ? Math.max(...existingYears) : currentThaiYear;
+    const minYear = existingYears.length > 0 ? Math.min(...existingYears) : currentThaiYear;
+
+    const options = new Set<number>(existingYears);
+
+    // เพิ่มปีปัจจุบันเสมอ
+    options.add(currentThaiYear);
+
+    // ถ้าอนุญาตให้สร้าง เพิ่มตัวเลือก +/- 2 ปี
+    if (allowCreate) {
+        options.add(maxYear + 1);
+        options.add(maxYear + 2);
+        options.add(minYear - 1);
+        options.add(minYear - 2);
+    }
+
+    // แปลงเป็น Array และเรียงจากมากไปน้อย
+    return Array.from(options).sort((a, b) => b - a);
+  })();
+
+  const handleSelect = (year: number) => {
     setIsOpen(false);
-    setIsCreatingMode(false); // Reset mode
-  };
 
-  // ✅ ฟังก์ชันเลือกสร้างปีที่ระบุ
-  const handleCreateSpecificYear = (targetYear: number) => {
-    if (onCreateYear) {
-      console.log("🟢 [YearDropdown] Creating year:", targetYear);
-      onCreateYear(targetYear);
-      setIsOpen(false);
-      setIsCreatingMode(false);
+    // เช็คว่าปีนี้มีอยู่จริงไหม?
+    const exists = existingYears.includes(year);
+
+    if (exists) {
+        onYearChange(null, year);
+    } else {
+        if (onCreateYear) {
+            // Optimistic Update: เพิ่มปีนี้เข้า existingYears ทันทีเพื่อให้ UI เปลี่ยนสถานะ
+            setExistingYears(prev => [year, ...prev].sort((a, b) => b - a));
+            onCreateYear(year);
+        }
     }
   };
-
-  // คำนวณปีที่จะให้เลือกสร้าง (เช่น 3 ปีถัดไปจากปีล่าสุด)
-  const maxYear = years.length > 0 ? Math.max(...years.map(y => y.year)) : currentThaiYear;
-  const futureYears = [1, 2, 3].map(offset => maxYear + offset);
 
   return (
     <div className="relative">
@@ -75,45 +106,49 @@ export default function YearDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl overflow-hidden border border-gray-100 max-h-96 overflow-y-auto z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 mt-2 w-60 bg-white rounded-lg shadow-xl overflow-hidden border border-gray-100 max-h-[400px] overflow-y-auto z-50 animate-in fade-in zoom-in-95 duration-100">
           
-          {/* Section 1: ปีที่มีอยู่แล้ว */}
-          <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-50 bg-gray-50/50 sticky top-0">
-            ปีงบประมาณที่มีข้อมูล
+          <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-50 bg-gray-50/50 sticky top-0 flex justify-between items-center">
+            <span>เลือกปีงบประมาณ</span>
+            {isLoading && <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>}
           </div>
           
-          {years.map((y) => (
-            <button
-              key={y.year}
-              onClick={() => handleSelect(y.id, y.year)}
-              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors flex justify-between items-center group border-b border-gray-50 last:border-0 ${y.year === selectedYear ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700'}`}
-            >
-              <span className="font-mono">{y.year}</span>
-              {y.year === selectedYear && <div className="w-2 h-2 rounded-full bg-blue-500"></div>}
-            </button>
-          ))}
+          {allOptions.map((year) => {
+            const isExisting = existingYears.includes(year);
+            const isSelected = year === selectedYear;
 
-          {/* Section 2: สร้างปีใหม่ (แสดงเฉพาะ allowCreate=true) */}
-          {allowCreate && onCreateYear && (
-            <>
-                <div className="px-3 py-2 text-xs font-semibold text-blue-400 uppercase tracking-wider border-t border-b border-gray-50 bg-blue-50/30">
-                    สร้างปีงบประมาณใหม่
+            return (
+              <button
+                key={year}
+                onClick={() => handleSelect(year)}
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex justify-between items-center border-b border-gray-50 last:border-0 
+                  ${isSelected ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}
+                `}
+              >
+                <div className="flex items-center gap-2.5">
+                    {/* ไอคอนสถานะ */}
+                    {isExisting ? (
+                        <Calendar className={`w-4 h-4 ${isSelected ? 'text-blue-500' : 'text-gray-300'}`} />
+                    ) : (
+                        <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <Plus className="w-3 h-3 text-emerald-600" />
+                        </div>
+                    )}
+                    
+                    <span className="font-mono">{year}</span>
+                    
+                    {/* ป้ายกำกับ */}
+                    {!isExisting && (
+                        <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100 font-medium">
+                            สร้างใหม่
+                        </span>
+                    )}
                 </div>
                 
-                {futureYears.map(futureYear => (
-                    <button
-                        key={futureYear}
-                        onClick={() => handleCreateSpecificYear(futureYear)}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-2 group"
-                    >
-                        <div className="w-6 h-6 rounded-full bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors">
-                            <Plus className="w-3 h-3" />
-                        </div>
-                        <span>สร้างปี <span className="font-mono font-medium">{futureYear}</span></span>
-                    </button>
-                ))}
-            </>
-          )}
+                {isSelected && <Check className="w-4 h-4 text-blue-500" />}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

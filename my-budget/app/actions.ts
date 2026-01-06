@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { unstable_noStore as noStore } from 'next/cache';
 
 // ฟังก์ชันดึงปีงบประมาณ (ใช้ร่วมกันทุกหน้า)
 export async function getBudgetYears() {
@@ -35,5 +36,22 @@ export async function createBudgetYear(year: number) {
   } catch (error) {
     console.error("Error creating budget year:", error);
     throw new Error("Failed to create budget year");
+  }
+}
+// Year ของรายจ่าย
+export async function getOnlyExpenseYears() {
+  noStore(); // ❌ ห้าม Cache เด็ดขาด
+  try {
+    console.log("Fetching Expense Years..."); // Log ดูที่ Server
+    
+    const years = await prisma.expenseBudget.findMany({
+      orderBy: { budget_year: 'desc' },
+      select: { id: true, budget_year: true }
+    })
+
+    return years.map(y => ({ id: y.id, year: y.budget_year }))
+  } catch (error) {
+    console.error("Error fetching expense years:", error);
+    return [];
   }
 }
