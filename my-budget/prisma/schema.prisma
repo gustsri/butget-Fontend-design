@@ -254,3 +254,22 @@ model BudgetRecord {
   @@index([fund_id])
   @@map("budget_records")
 }
+
+model TeachingServiceFee {
+  id              Int      @id @default(autoincrement())
+  course_code     String   @db.VarChar(20)
+  course_name     String   @db.VarChar(255)
+  year_level      String   @db.VarChar(10)
+  student_regular Int      @default(0)
+  student_special Int      @default(0)
+  credits           Int      @default(0)        // เก็บเลข 3
+  credits_structure String   @default("0-0-0") // เก็บ "3-0-6"
+  fee_regular     Decimal  @default(0) @db.Decimal(12, 2)
+  fee_special     Decimal  @default(0) @db.Decimal(12, 2)
+  fee_sum         Decimal  @default(0) @db.Decimal(15, 2)
+  grand_total     Decimal  @default(0) @db.Decimal(15, 2)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@map("teaching_service_fees")
+}
