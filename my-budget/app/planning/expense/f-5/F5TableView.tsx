@@ -1,156 +1,289 @@
 'use client'
 
-import React, { useState } from 'react'
-import { saveBudgetRecord, AllocationGroup, BudgetNode } from './actions'
+import React, { useState, useEffect } from 'react'
+import { saveBudgetRecord } from './actions'
 import { Loader2 } from 'lucide-react'
 
-type Props = {
-    data: {
-        activity: any
-        groupedData: AllocationGroup[]
-    }
-    year: number
+// --- Type Definitions ---
+type BudgetNode = {
+    itemId: number
+    code: string
+    name: string
+    level: number
+    amountBudget: number
+    amountIncome: number
+    recordId?: number
+    children: BudgetNode[]
 }
 
-// ใช้เก็บสถานะการบันทึกของแต่ละ Record (เพื่อโชว์ Loading เล็กๆ)
-type SavingState = Record<string, boolean>
+type AllocationGroup = {
+    allocationId: number
+    fundName: string
+    tree: BudgetNode[]
+}
 
-export default function F5TableView({ data, year }: Props) {
-    const { groupedData } = data
-    const [savingMap, setSavingMap] = useState<SavingState>({})
+type Props = {
+    data: { groupedData: AllocationGroup[] }
+    year: number
+    onBudgetUpdate?: (budget: number, income: number) => void
+}
 
-    // ✅ ฟังก์ชัน Save ทันทีเมื่อ Blur (เปลี่ยนโฟกัสออกจากช่อง Input)
-    const handleBlur = async (allocId: number, itemId: number, field: 'budget' | 'income', val: string, currentOtherVal: number) => {
-        const numVal = parseFloat(val) || 0
-        const key = `${allocId}-${itemId}`
+export default function F5TableView({ data, year, onBudgetUpdate }: Props) {
+    const [groups, setGroups] = useState<AllocationGroup[]>(data.groupedData || [])
+    const [savingMap, setSavingMap] = useState<Record<string, boolean>>({})
 
-        setSavingMap(prev => ({ ...prev, [key]: true })) // เริ่มหมุนติ้วๆ เฉพาะช่องนี้
+    // ✅ Helper: คำนวณยอดรวม (คำนวณสดจากข้อมูลล่าสุด)
+    const calculateTotal = (currentGroups: AllocationGroup[]) => {
+        let totalBudget = 0
+        let totalIncome = 0
 
-        try {
-            await saveBudgetRecord({
-                allocationId: allocId,
-                itemId: itemId,
-                year: year,
-                // ต้องส่งไปทั้งคู่: ค่าใหม่ (numVal) และค่าเดิมของอีกช่อง (currentOtherVal)
-                amountBudget: field === 'budget' ? numVal : currentOtherVal,
-                amountIncome: field === 'income' ? numVal : currentOtherVal
+        const traverse = (nodes: BudgetNode[]) => {
+            nodes.forEach(node => {
+                if (node.children.length === 0) {
+                    // แปลงเป็นตัวเลขให้ชัวร์ก่อนบวก
+                    totalBudget += Number(node.amountBudget) || 0
+                    totalIncome += Number(node.amountIncome) || 0
+                } else {
+                    traverse(node.children)
+                }
             })
-        } catch (error) {
-            console.error("Save failed", error)
-            alert("บันทึกไม่สำเร็จ กรุณาลองใหม่")
-        } finally {
-            setSavingMap(prev => ({ ...prev, [key]: false })) // หยุดหมุน
+        }
+
+        currentGroups.forEach(g => traverse(g.tree))
+        return { totalBudget, totalIncome }
+    }
+
+    // ✅ Effect: ส่งค่าเริ่มต้นกลับไปทันทีที่โหลด
+    useEffect(() => {
+        if (onBudgetUpdate) {
+            const { totalBudget, totalIncome } = calculateTotal(groups)
+            console.log("🟢 [F5Table] Initial Total:", totalBudget, totalIncome)
+            onBudgetUpdate(totalBudget, totalIncome)
+        } else {
+            console.warn("⚠️ [F5Table] Warning: onBudgetUpdate prop is missing!")
+        }
+    }, []) // Run once on mount
+
+    // ✅ Effect: Sync ข้อมูลถ้ามีการเปลี่ยนจาก Server (เช่น เปลี่ยนปี)
+    useEffect(() => {
+        setGroups(data.groupedData || [])
+        // คำนวณใหม่ด้วยเมื่อเปลี่ยนข้อมูล
+        if(onBudgetUpdate && data.groupedData) {
+             const { totalBudget, totalIncome } = calculateTotal(data.groupedData)
+             onBudgetUpdate(totalBudget, totalIncome)
+        }
+    }, [data])
+
+
+    // 1. ฟังก์ชันเปลี่ยนค่าหน้าจอทันที (Real-time UI)
+    const handleLocalChange = (
+        allocationId: number, 
+        nodeId: number, 
+        field: 'amountBudget' | 'amountIncome', 
+        value: string
+    ) => {
+        // แปลงค่าว่างเป็น 0
+        const numValue = value === '' ? 0 : parseFloat(value)
+
+        // Clone & Update
+        const newGroups = JSON.parse(JSON.stringify(groups))
+
+        // Recursive Update
+        const updateNode = (nodes: BudgetNode[]) => {
+            for (let node of nodes) {
+                if (node.itemId === nodeId) {
+                    node[field] = numValue
+                    return true
+                }
+                if (node.children.length > 0 && updateNode(node.children)) return true
+            }
+            return false
+        }
+
+        const targetGroup = newGroups.find((g: AllocationGroup) => g.allocationId === allocationId)
+        if (targetGroup) updateNode(targetGroup.tree)
+
+        // 1.1 อัปเดตตารางทันที
+        setGroups(newGroups)
+
+        // 1.2 คำนวณยอดรวมใหม่ทันที แล้วส่งไป Header
+        if (onBudgetUpdate) {
+            const { totalBudget, totalIncome } = calculateTotal(newGroups)
+            // console.log("⚡ [F5Table] Real-time Update:", totalBudget, totalIncome) // ดู Log นี้
+            onBudgetUpdate(totalBudget, totalIncome)
         }
     }
 
-    if (!groupedData || groupedData.length === 0) return <div>ไม่พบข้อมูล</div>
+    // 2. ฟังก์ชันบันทึกเมื่อ "พิมพ์เสร็จแล้ว" (onBlur)
+    const handleSave = async (
+        allocationId: number,
+        nodeId: number,
+        field: 'amountBudget' | 'amountIncome',
+        value: number
+    ) => {
+        const key = `${allocationId}-${nodeId}-${field}`
+        setSavingMap(prev => ({ ...prev, [key]: true }))
+
+        try {
+            // หาค่าปัจจุบันของอีก field เพื่อส่งไปคู่กัน
+            let currentBudget = 0
+            let currentIncome = 0
+            
+            const findCurrentValues = (gs: AllocationGroup[]) => {
+                for (const g of gs) {
+                    if (g.allocationId === allocationId) {
+                        const traverse = (nodes: BudgetNode[]) => {
+                            for (const n of nodes) {
+                                if (n.itemId === nodeId) {
+                                    currentBudget = n.amountBudget
+                                    currentIncome = n.amountIncome
+                                    return
+                                }
+                                traverse(n.children)
+                            }
+                        }
+                        traverse(g.tree)
+                    }
+                }
+            }
+            findCurrentValues(groups) // หาจาก state ปัจจุบัน
+
+            console.log(`💾 [F5Table] Saving ID: ${nodeId} -> B:${currentBudget}, I:${currentIncome}`)
+
+            await saveBudgetRecord({
+                allocationId,
+                itemId: nodeId,
+                year,
+                amountBudget: field === 'amountBudget' ? value : currentBudget,
+                amountIncome: field === 'amountIncome' ? value : currentIncome
+            })
+
+        } catch (error) {
+            console.error('Save failed', error)
+        } finally {
+            setSavingMap(prev => {
+                const newState = { ...prev }
+                delete newState[key]
+                return newState
+            })
+        }
+    }
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-6 space-y-8 bg-gray-50/30">
-                {groupedData.map((group) => (
-                    <div key={group.allocationId} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                        <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex items-center gap-3 justify-between">
-                            <div className="flex items-center gap-3">
-                                <span className="bg-white border border-gray-300 text-gray-600 text-xs font-mono px-2 py-1 rounded shadow-sm">
-                                    {group.fundCode}
-                                </span>
-                                <h3 className="font-bold text-gray-700 text-sm">{group.fundName}</h3>
-                            </div>
-                        </div>
-
+        <div className="space-y-8">
+            {groups.map((group) => (
+                <div key={group.allocationId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 className="font-bold text-gray-700">{group.fundName}</h3>
+                        <span className="text-xs text-gray-400 bg-white px-2 py-1 rounded border">ID: {group.allocationId}</span>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                            <thead className="bg-white text-gray-500 font-semibold border-b border-gray-100">
-                                <tr>
-                                    <th className="py-3 px-4 text-left w-[60%]">รายการ</th>
-                                    <th className="py-3 px-4 text-right w-[20%] text-blue-600">งบแผ่นดิน (กำกับ)</th>
-                                    <th className="py-3 px-4 text-right w-[20%] text-orange-600">เงินรายได้ (แผน)</th>
+                            <thead>
+                                <tr className="bg-gray-50/50 text-gray-500 border-b border-gray-100">
+                                    <th className="px-6 py-3 text-left font-medium w-1/2">รายการ (Expense Items)</th>
+                                    <th className="px-4 py-3 text-right font-medium w-1/4">งบประมาณแผ่นดิน</th>
+                                    <th className="px-4 py-3 text-right font-medium w-1/4">เงินรายได้</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {group.tree.map(node => (
-                                    <RowItem
-                                        key={node.itemId}
-                                        node={node}
-                                        allocId={group.allocationId}
-                                        savingMap={savingMap}
-                                        onSave={handleBlur}
-                                    />
-                                ))}
+                            <tbody>
+                                <RecursiveRows 
+                                    nodes={group.tree} 
+                                    allocationId={group.allocationId} 
+                                    handleLocalChange={handleLocalChange}
+                                    handleSave={handleSave}
+                                    savingMap={savingMap}
+                                />
                             </tbody>
                         </table>
                     </div>
-                ))}
-            </div>
+                </div>
+            ))}
         </div>
     )
 }
 
-// --- Component แถวรายการ ---
-const RowItem = ({ node, allocId, savingMap, onSave }: any) => {
-    const isParent = node.children && node.children.length > 0
-    const key = `${allocId}-${node.itemId}`
-    const isSaving = savingMap[key]
-
-    // Local State สำหรับ Input เพื่อให้พิมพ์ลื่นๆ ไม่กระตุก
-    const [budgetVal, setBudgetVal] = useState(node.amountBudget || '')
-    const [incomeVal, setIncomeVal] = useState(node.amountIncome || '')
-
-    const indentPx = node.level * 24 + 16
-
+function RecursiveRows({ nodes, allocationId, handleLocalChange, handleSave, savingMap }: any) {
     return (
         <>
-            <tr className={`group transition-colors ${isParent ? 'bg-gray-100 font-bold text-gray-900' : 'hover:bg-blue-50/30 text-gray-600'}`}>
-                {/* Name */}
-                <td className="py-2 pr-4 border-r border-dashed border-gray-100 relative">
-                    <div className="flex items-center gap-3" style={{ paddingLeft: `${indentPx}px` }}>
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isParent ? 'bg-gray-200 text-gray-700' : 'bg-gray-100 text-gray-400'}`}>
-                            {node.code}
-                        </span>
-                        <span>{node.name}</span>
-                        {/* Loading Indicator เล็กๆ หลังชื่อรายการ */}
-                        {isSaving && <Loader2 className="w-3 h-3 animate-spin text-green-500 ml-2" />}
-                    </div>
-                </td>
+            {nodes.map((node: BudgetNode) => {
+                const isLeaf = node.children.length === 0
+                const paddingLeft = node.level * 24 + 24 
 
-                {/* Budget Column (Gov) */}
-                <td className="py-1 px-2 text-right relative">
-                    {!isParent ? (
-                        <input
-                            type="number"
-                            className="w-full text-right p-1.5 bg-transparent border border-transparent rounded hover:border-blue-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono text-slate-600"
-                            placeholder="-"
-                            value={budgetVal}
-                            onChange={(e) => setBudgetVal(e.target.value)}
-                            // ✅ Auto Save เมื่อกด Tab ออก หรือคลิกที่อื่น
-                            onBlur={(e) => onSave(allocId, node.itemId, 'budget', e.target.value, parseFloat(incomeVal) || 0)}
-                        />
-                    ) : (
-                        <div className="pr-2 text-blue-700/70">{node.amountBudget > 0 ? node.amountBudget.toLocaleString() : '-'}</div>
-                    )}
-                </td>
+                return (
+                    <React.Fragment key={node.itemId}>
+                        <tr className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${!isLeaf ? 'bg-gray-50/30 font-semibold text-gray-700' : ''}`}>
+                            <td className="py-2 pr-4 relative" style={{ paddingLeft: `${paddingLeft}px` }}>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-mono text-xs text-gray-400 opacity-70">{node.code}</span>
+                                    <span>{node.name}</span>
+                                </div>
+                            </td>
+                            
+                            {/* Input: งบประมาณ */}
+                            <td className="px-4 py-2">
+                                {isLeaf ? (
+                                    <div className="relative">
+                                        <input 
+                                            type="number"
+                                            value={node.amountBudget === 0 ? '' : node.amountBudget} 
+                                            onChange={(e) => handleLocalChange(allocationId, node.itemId, 'amountBudget', e.target.value)}
+                                            onBlur={(e) => handleSave(allocationId, node.itemId, 'amountBudget', parseFloat(e.target.value || '0'))}
+                                            className="w-full text-right border border-gray-200 rounded px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            placeholder="0"
+                                        />
+                                        {savingMap[`${allocationId}-${node.itemId}-amountBudget`] && (
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                                <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-right text-gray-400 font-mono pr-3 opacity-50">
+                                        -
+                                    </div>
+                                )}
+                            </td>
 
-                {/* Income Column */}
-                <td className="py-1 px-2 text-right relative">
-                    {!isParent ? (
-                        <input
-                            type="number"
-                            className="w-full text-right p-1.5 bg-transparent border border-transparent rounded hover:border-orange-300 focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all font-mono font-bold text-orange-700"
-                            placeholder="-"
-                            value={incomeVal}
-                            onChange={(e) => setIncomeVal(e.target.value)}
-                            // ✅ Auto Save เมื่อกด Tab ออก หรือคลิกที่อื่น
-                            onBlur={(e) => onSave(allocId, node.itemId, 'income', e.target.value, parseFloat(budgetVal) || 0)}
-                        />
-                    ) : (
-                        <div className="pr-2 text-orange-700">{node.amountIncome > 0 ? node.amountIncome.toLocaleString() : '-'}</div>
-                    )}
-                </td>
-            </tr>
-
-            {node.children.map((child: any) => (
-                <RowItem key={child.itemId} node={child} allocId={allocId} savingMap={savingMap} onSave={onSave} />
-            ))}
+                            {/* Input: เงินรายได้ */}
+                            <td className="px-4 py-2">
+                                {isLeaf ? (
+                                    <div className="relative">
+                                        <input 
+                                            type="number"
+                                            value={node.amountIncome === 0 ? '' : node.amountIncome}
+                                            onChange={(e) => handleLocalChange(allocationId, node.itemId, 'amountIncome', e.target.value)}
+                                            onBlur={(e) => handleSave(allocationId, node.itemId, 'amountIncome', parseFloat(e.target.value || '0'))}
+                                            className="w-full text-right border border-gray-200 rounded px-3 py-1.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            placeholder="0"
+                                        />
+                                        {savingMap[`${allocationId}-${node.itemId}-amountIncome`] && (
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                                <Loader2 className="w-3 h-3 animate-spin text-orange-500" />
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-right text-gray-400 font-mono pr-3 opacity-50">
+                                        -
+                                    </div>
+                                )}
+                            </td>
+                        </tr>
+                        
+                        {node.children.length > 0 && (
+                            <RecursiveRows 
+                                nodes={node.children} 
+                                allocationId={allocationId} 
+                                handleLocalChange={handleLocalChange} 
+                                handleSave={handleSave}
+                                savingMap={savingMap}
+                            />
+                        )}
+                    </React.Fragment>
+                )
+            })}
         </>
     )
 }
